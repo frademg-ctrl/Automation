@@ -1,0 +1,922 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "4b44f58c-0a7a-428b-8abe-b9fa5f31c51b",
+              "leftValue": "={{ $json.work_type }}",
+              "rightValue": "Remote",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "44761cc3-8b86-441f-8712-6e39c4c53ec7",
+              "leftValue": "={{ $json.work_type }}",
+              "rightValue": "Hybrid",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.2,
+      "position": [
+        320,
+        160
+      ],
+      "id": "ad86a42a-f5a3-448f-aab2-8c7bcbc9121b",
+      "name": "Only Remote"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "ce5f1620-0bb2-43ac-8afe-f3b372a86840",
+              "leftValue": "={{ $json.job_title }}",
+              "rightValue": "=\\b(AI|Automation|ChatGPT|LLM|API)\\b",
+              "operator": {
+                "type": "string",
+                "operation": "regex"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.2,
+      "position": [
+        544,
+        160
+      ],
+      "id": "27f6cf80-68ee-4fe5-a88e-9d6d8bc9e32a",
+      "name": "Only AI Related"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        -1200,
+        608
+      ],
+      "id": "e1acfbc3-dc44-44ec-b324-faccdfa752fe",
+      "name": "Loop Over Items"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "d8b25d62-4abb-4608-959c-c8fecae29f7c",
+              "leftValue": "={{ $json.choices[0].message.content.fit_score }}",
+              "rightValue": 30,
+              "operator": {
+                "type": "number",
+                "operation": "gte"
+              }
+            },
+            {
+              "id": "0a9bf660-2711-49c9-a2fc-819b964a9f29",
+              "leftValue": "={{ $json.choices[0].message.content.complexity }}",
+              "rightValue": 5,
+              "operator": {
+                "type": "number",
+                "operation": "lt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -592,
+        608
+      ],
+      "id": "e5a06e57-9787-4a2d-958c-00146d039726",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "base": {
+          "__rl": true,
+          "value": "app9zToc9La73kZP2",
+          "mode": "list",
+          "cachedResultName": "AI Job Search",
+          "cachedResultUrl": "https://airtable.com/app9zToc9La73kZP2"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tbl9Il4lEjNTU8WRM",
+          "mode": "list",
+          "cachedResultName": "LinkedIn Job Scrape",
+          "cachedResultUrl": "https://airtable.com/app9zToc9La73kZP2/tbl9Il4lEjNTU8WRM"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Company Name": "={{ $('Loop Over Items').item.json.company }}",
+            "Job Title": "={{ $('Loop Over Items').item.json.job_title }}",
+            "Company LinkedIn": "={{ $('Loop Over Items').item.json.company_url }}",
+            "Job Post URL": "={{ $('Loop Over Items').item.json.job_url }}",
+            "Job Description": "={{ $('Loop Over Items').item.json.description }}",
+            "Salary": "={{ $('Loop Over Items').item.json.salary }}",
+            "Posted Date": "={{ $('Loop Over Items').item.json.posted_at.split(' ')[0] }}",
+            "Fit Score": "={{ $('If').item.json.choices[0].message.content.fit_score }}",
+            "Complexity": "={{ $('If').item.json.choices[0].message.content.complexity }}",
+            "Explanation": "={{ $('If').item.json.choices[0].message.content.reasoning }}",
+            "Requirements": "={{ $('If').item.json.choices[0].message.content.extracted_requirements.join('\\n• ') }}",
+            "Apply URL": "={{ $('Loop Over Items').item.json.apply_url }}",
+            "Cover Letter": "={{ $('Cover Letter and Resume').item.json.output['cover-letter'] }}"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "Company Name",
+              "displayName": "Company Name",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Job Title",
+              "displayName": "Job Title",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Company LinkedIn",
+              "displayName": "Company LinkedIn",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Job Post URL",
+              "displayName": "Job Post URL",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Job Description",
+              "displayName": "Job Description",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Salary",
+              "displayName": "Salary",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Posted Date",
+              "displayName": "Posted Date",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Fit Score",
+              "displayName": "Fit Score",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Complexity",
+              "displayName": "Complexity",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Explanation",
+              "displayName": "Explanation",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Requirements",
+              "displayName": "Requirements",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Apply URL",
+              "displayName": "Apply URL",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Cover Letter",
+              "displayName": "Cover Letter",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Customized Resume",
+              "displayName": "Customized Resume",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "array",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "Applied",
+                  "value": "Applied"
+                },
+                {
+                  "name": "Skipped",
+                  "value": "Skipped"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Date Applied",
+              "displayName": "Date Applied",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "dateTime",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "typecast": false
+        }
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        800,
+        656
+      ],
+      "id": "9cc2728b-b0d6-403a-9daf-d794e7edd7dc",
+      "name": "Create a record"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "daysInterval": 4
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -976,
+        160
+      ],
+      "id": "07f5e0fe-5573-4f91-b094-a90f88630bac",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n\"cover-letter\": \"xyz\",\n\"professional-summary\": \"yyy\"\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        16,
+        752
+      ],
+      "id": "1187d643-6d2c-4eec-a73c-eff1ca410013",
+      "name": "Structured Output Parser"
+    },
+    {
+      "parameters": {
+        "html": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n    <meta charset=\"UTF-8\">\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n    <title>Alex Morgan - AI Automation Consultant</title>\n    <style>\n        * {\n            margin: 0;\n            padding: 0;\n            box-sizing: border-box;\n        }\n        \n        body {\n            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;\n            line-height: 1.6;\n            color: #333;\n            background-color: #f8f9fa;\n        }\n        \n        .container {\n            max-width: 900px;\n            margin: 20px auto;\n            background: white;\n            box-shadow: 0 0 20px rgba(0,0,0,0.1);\n            border-radius: 8px;\n            overflow: hidden;\n        }\n        \n        .header {\n            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);\n            color: white;\n            padding: 40px;\n            text-align: center;\n        }\n        \n        .profile-img {\n            width: 120px;\n            height: 120px;\n            border-radius: 50%;\n            border: 4px solid white;\n            margin-bottom: 20px;\n            object-fit: cover;\n        }\n        \n        .header h1 {\n            font-size: 2.5em;\n            margin-bottom: 10px;\n            font-weight: 300;\n        }\n        \n        .header .title {\n            font-size: 1.3em;\n            opacity: 0.9;\n            margin-bottom: 20px;\n        }\n        \n        .contact-info {\n            display: flex;\n            justify-content: center;\n            flex-wrap: wrap;\n            gap: 30px;\n            font-size: 0.95em;\n        }\n        \n        .contact-item {\n            display: flex;\n            align-items: center;\n            gap: 8px;\n        }\n        \n        .main-content {\n            display: grid;\n            grid-template-columns: 1fr 2fr;\n            gap: 40px;\n            padding: 40px;\n        }\n        \n        .sidebar {\n            background: #f8f9fa;\n            padding: 30px;\n            border-radius: 8px;\n        }\n        \n        .section {\n            margin-bottom: 30px;\n        }\n        \n        .section h2 {\n            color: #667eea;\n            border-bottom: 2px solid #667eea;\n            padding-bottom: 10px;\n            margin-bottom: 20px;\n            font-size: 1.4em;\n        }\n        \n        .skill-item {\n            background: white;\n            padding: 12px 16px;\n            margin-bottom: 10px;\n            border-radius: 6px;\n            border-left: 4px solid #667eea;\n            box-shadow: 0 2px 4px rgba(0,0,0,0.1);\n        }\n        \n        .skill-category {\n            font-weight: 600;\n            color: #333;\n            margin-bottom: 5px;\n        }\n        \n        .skill-list {\n            color: #666;\n            font-size: 0.9em;\n        }\n        \n        .experience-item {\n            margin-bottom: 30px;\n            padding-bottom: 25px;\n            border-bottom: 1px solid #eee;\n        }\n        \n        .experience-item:last-child {\n            border-bottom: none;\n        }\n        \n        .job-title {\n            font-size: 1.3em;\n            font-weight: 600;\n            color: #333;\n            margin-bottom: 5px;\n        }\n        \n        .company {\n            font-size: 1.1em;\n            color: #667eea;\n            font-weight: 500;\n            margin-bottom: 5px;\n        }\n        \n        .duration {\n            color: #666;\n            font-style: italic;\n            margin-bottom: 15px;\n        }\n        \n        .achievements {\n            list-style: none;\n        }\n        \n        .achievements li {\n            margin-bottom: 8px;\n            padding-left: 20px;\n            position: relative;\n        }\n        \n        .achievements li:before {\n            content: \"▸\";\n            color: #667eea;\n            position: absolute;\n            left: 0;\n        }\n        \n        .education-item {\n            background: white;\n            padding: 20px;\n            border-radius: 8px;\n            border-left: 4px solid #667eea;\n            box-shadow: 0 2px 4px rgba(0,0,0,0.1);\n        }\n        \n        .degree {\n            font-weight: 600;\n            color: #333;\n            margin-bottom: 5px;\n        }\n        \n        .school {\n            color: #667eea;\n            margin-bottom: 5px;\n        }\n        \n        .year {\n            color: #666;\n            font-style: italic;\n        }\n\n        .tda-badge {\n            display: inline-block;\n            background: linear-gradient(45deg, #667eea, #764ba2);\n            color: white;\n            padding: 6px 12px;\n            border-radius: 20px;\n            font-size: 0.85em;\n            font-weight: 500;\n            margin-top: 8px;\n        }\n        \n        /* Print and PDF Optimization Styles */\n        @media print {\n            body {\n                background-color: white;\n                font-size: 12px;\n                line-height: 1.4;\n            }\n            \n            .container {\n                max-width: none;\n                margin: 0;\n                box-shadow: none;\n                border-radius: 0;\n                page-break-after: avoid;\n            }\n            \n            .header {\n                padding: 20px;\n                page-break-after: avoid;\n                page-break-inside: avoid;\n            }\n            \n            .header h1 {\n                font-size: 2em;\n            }\n            \n            .header .title {\n                font-size: 1.1em;\n            }\n            \n            .main-content {\n                padding: 20px;\n                gap: 20px;\n                page-break-inside: avoid;\n            }\n            \n            .sidebar {\n                padding: 15px;\n                background: #f8f9fa;\n                page-break-inside: avoid;\n            }\n            \n            .section {\n                page-break-inside: avoid;\n                margin-bottom: 20px;\n            }\n            \n            .section h2 {\n                page-break-after: avoid;\n                margin-bottom: 15px;\n                font-size: 1.2em;\n            }\n            \n            .experience-item {\n                page-break-inside: avoid;\n                margin-bottom: 20px;\n                padding-bottom: 15px;\n            }\n            \n            .experience-item:nth-child(3) {\n                page-break-before: always;\n            }\n            \n            .skill-item {\n                page-break-inside: avoid;\n                margin-bottom: 8px;\n                padding: 8px 12px;\n            }\n            \n            .education-item {\n                page-break-inside: avoid;\n                padding: 15px;\n            }\n            \n            .achievements {\n                page-break-inside: avoid;\n            }\n            \n            .achievements li {\n                margin-bottom: 6px;\n            }\n            \n            .contact-info {\n                gap: 20px;\n                font-size: 0.9em;\n            }\n            \n            .profile-img {\n                width: 100px;\n                height: 100px;\n            }\n            \n            /* Prevent orphaned content */\n            h1, h2, h3 {\n                page-break-after: avoid;\n            }\n            \n            ul, ol {\n                page-break-before: auto;\n                page-break-after: auto;\n                page-break-inside: avoid;\n            }\n            \n            /* Specific section break controls */\n            .section:nth-child(1) { /* Professional Summary */\n                page-break-after: avoid;\n            }\n            \n            .experience-section {\n                page-break-before: auto;\n            }\n        }\n        \n        /* Page break utilities */\n        .page-break-before {\n            page-break-before: always;\n        }\n        \n        .page-break-after {\n            page-break-after: always;\n        }\n        \n        .no-page-break {\n            page-break-inside: avoid;\n        }\n        \n        @media (max-width: 768px) {\n            .main-content {\n                grid-template-columns: 1fr;\n                gap: 20px;\n                padding: 20px;\n            }\n            \n            .contact-info {\n                flex-direction: column;\n                gap: 15px;\n            }\n            \n            .header {\n                padding: 30px 20px;\n            }\n            \n            .header h1 {\n                font-size: 2em;\n            }\n        }\n    </style>\n</head>\n<body>\n    <div class=\"container\">\n        <header class=\"header no-page-break\">\n            <img src=\"https://images.unsplash.com/photo-1560250097-0b93528c311a?w=200&h=200&fit=crop&crop=face\" alt=\"Professional headshot\" class=\"profile-img\">\n            <h1>Alex Morgan</h1>\n            <div class=\"title\">AI Automation Consultant & Workflow Architect</div>\n            <div class=\"contact-info\">\n                <div class=\"contact-item\">\n                    <span>📧</span>\n                    <span>alex.morgan@email.com</span>\n                </div>\n                <div class=\"contact-item\">\n                    <span>📱</span>\n                    <span>(555) 123-4567</span>\n                </div>\n                <div class=\"contact-item\">\n                    <span>🌐</span>\n                    <span>linkedin.com/in/alexmorgan</span>\n                </div>\n                <div class=\"contact-item\">\n                    <span>📍</span>\n                    <span>New York, NY</span>\n                </div>\n            </div>\n        </header>\n\n        <div class=\"main-content\">\n            <aside class=\"sidebar\">\n                <section class=\"section no-page-break\">\n                    <h2>Core Capabilities</h2>\n                    <div class=\"skill-item\">\n                        <div class=\"skill-category\">AI Platform Integration</div>\n                        <div class=\"skill-list\">OpenAI GPT-4, ElevenLabs, Replicate, Claude, Anthropic APIs</div>\n                    </div>\n                    <div class=\"skill-item\">\n                        <div class=\"skill-category\">No-Code/Low-Code Mastery</div>\n                        <div class=\"skill-list\">Make.com, n8n, Zapier, Airtable, Google Workspace APIs</div>\n                    </div>\n                    <div class=\"skill-item\">\n                        <div class=\"skill-category\">RAG & Chatbot Development</div>\n                        <div class=\"skill-list\">Supabase, Vector databases, Knowledge base integration</div>\n                    </div>\n                    <div class=\"skill-item\">\n                        <div class=\"skill-category\">Prompt Engineering</div>\n                        <div class=\"skill-list\">Advanced prompting, Chain-of-thought, Few-shot learning</div>\n                        <div class=\"tda-badge\">TDA Framework Certified</div>\n                    </div>\n                    <div class=\"skill-item\">\n                        <div class=\"skill-category\">API & Integrations</div>\n                        <div class=\"skill-list\">REST APIs, Webhooks, Custom connectors, Database integration</div>\n                    </div>\n                    <div class=\"skill-item\">\n                        <div class=\"skill-category\">Creative & Communication</div>\n                        <div class=\"skill-list\">Creative Writing, Calligraphy, Content Strategy</div>\n                    </div>\n                </section>\n\n                <section class=\"section no-page-break\">\n                    <h2>Education</h2>\n                    <div class=\"education-item\">\n                        <div class=\"degree\">Bachelor of Arts in Communications</div>\n                        <div class=\"school\">State University</div>\n                        <div class=\"year\">2014</div>\n                    </div>\n                </section>\n\n                <section class=\"section no-page-break\">\n                    <h2>Certifications</h2>\n                    <div class=\"skill-item\">\n                        <div class=\"skill-category\">TDA Workflow Architecture</div>\n                        <div class=\"skill-list\">Trigger-Data-Action Framework</div>\n                    </div>\n                    <div class=\"skill-item\">\n                        <div class=\"skill-category\">Make.com Expert</div>\n                        <div class=\"skill-list\">Advanced scenario building</div>\n                    </div>\n                    <div class=\"skill-item\">\n                        <div class=\"skill-category\">OpenAI API Specialist</div>\n                        <div class=\"skill-list\">GPT integration & fine-tuning</div>\n                    </div>\n                </section>\n            </aside>\n\n            <main>\n                <section class=\"section no-page-break\">\n                    <h2>Professional Summary</h2>\n                    <p>{{ $json.output['professional-summary'] }}</p>\n                </section>\n\n                <section class=\"section experience-section\">\n                    <h2>Professional Experience</h2>\n                    \n                    <div class=\"experience-item no-page-break\">\n                        <div class=\"job-title\">Senior AI Automation Consultant</div>\n                        <div class=\"company\">TechFlow Solutions</div>\n                        <div class=\"duration\">2022 - Present</div>\n                        <ul class=\"achievements\">\n                            <li>Architected 75+ AI-powered workflows using TDA framework, integrating OpenAI GPT-4, ElevenLabs, and Replicate APIs for content automation</li>\n                            <li>Built enterprise RAG-enabled chatbots with Supabase vector storage, achieving 85% query resolution accuracy</li>\n                            <li>Implemented advanced prompt engineering strategies resulting in 60% improvement in AI output quality</li>\n                            <li>Designed multi-platform integrations connecting Make.com, n8n, Airtable, and Google Workspace for seamless data flow</li>\n                            <li>Led API integration projects reducing manual data entry by 80% across client organizations</li>\n                        </ul>\n                    </div>\n\n                    <div class=\"experience-item no-page-break\">\n                        <div class=\"job-title\">Marketing Automation & AI Specialist</div>\n                        <div class=\"company\">MarketingEdge Agency</div>\n                        <div class=\"duration\">2019 - 2022</div>\n                        <ul class=\"achievements\">\n                            <li>Pioneered AI-driven content creation workflows using OpenAI APIs, scaling content production by 300%</li>\n                            <li>Developed intelligent lead generation systems with Zapier and Airtable, improving lead quality by 45%</li>\n                            <li>Created automated customer journey mapping using advanced prompt engineering and workflow optimization</li>\n                            <li>Integrated ElevenLabs voice synthesis for automated video marketing, increasing engagement by 70%</li>\n                            <li>Built custom API connectors bridging legacy marketing tools with modern AI platforms</li>\n                        </ul>\n                    </div>\n\n                    <div class=\"experience-item no-page-break page-break-before\">\n                        <div class=\"job-title\">Digital Marketing Manager</div>\n                        <div class=\"company\">Growth Dynamics</div>\n                        <div class=\"duration\">2016 - 2019</div>\n                        <ul class=\"achievements\">\n                            <li>Transitioned traditional campaigns to automated workflows using Google Workspace APIs and custom integrations</li>\n                            <li>Developed data-driven marketing strategies using Airtable and advanced analytics integration</li>\n                            <li>Implemented early AI content tools and prompt engineering techniques for campaign optimization</li>\n                            <li>Created comprehensive automation frameworks that became foundation for current TDA methodology</li>\n                        </ul>\n                    </div>\n\n                    <div class=\"experience-item no-page-break\">\n                        <div class=\"job-title\">Marketing Coordinator</div>\n                        <div class=\"company\">StartupVentures Inc.</div>\n                        <div class=\"duration\">2014 - 2016</div>\n                        <ul class=\"achievements\">\n                            <li>Coordinated multi-channel campaigns while developing expertise in workflow automation tools</li>\n                            <li>Applied communications background to create compelling content strategies and brand messaging</li>\n                            <li>Leveraged calligraphy skills for premium brand design and personalized client communications</li>\n                            <li>Built foundation in marketing technology that evolved into current AI automation expertise</li>\n                        </ul>\n                    </div>\n                </section>\n\n                <section class=\"section no-page-break\">\n                    <h2>Key Achievements & Specializations</h2>\n                    <ul class=\"achievements\">\n                        <li><strong>TDA Framework Implementation:</strong> Developed proprietary Trigger-Data-Action methodology for workflow architecture</li>\n                        <li><strong>AI Platform Mastery:</strong> Successfully integrated OpenAI, ElevenLabs, and Replicate APIs across 50+ client projects</li>\n                        <li><strong>RAG Chatbot Excellence:</strong> Built 15+ knowledge-base powered chatbots using Supabase with average 85% accuracy</li>\n                        <li><strong>No-Code Leadership:</strong> Architected complex automations spanning Make.com, n8n, Zapier, and Google Workspace</li>\n                        <li><strong>Prompt Engineering Innovation:</strong> Reduced AI processing costs by 40% through advanced prompting techniques</li>\n                        <li><strong>Content Automation Scale:</strong> Automated content pipelines producing 1000+ pieces monthly with consistent quality</li>\n                        <li><strong>API Integration Expertise:</strong> Connected 100+ disparate systems through custom webhooks and connectors</li>\n                    </ul>\n                </section>\n            </main>\n        </div>\n    </div>\n</body>\n</html>"
+      },
+      "type": "n8n-nodes-base.html",
+      "typeVersion": 1.2,
+      "position": [
+        224,
+        656
+      ],
+      "id": "5a7c2e03-a0db-41b2-aee6-a3f3ef16a742",
+      "name": "HTML"
+    },
+    {
+      "parameters": {},
+      "type": "@custom-js/n8n-nodes-pdf-toolkit.html2Pdf",
+      "typeVersion": 1,
+      "position": [
+        400,
+        656
+      ],
+      "id": "660cdf78-4fe8-42ca-a176-6d059478f87a",
+      "name": "HTML to PDF",
+      "credentials": {}
+    },
+    {
+      "parameters": {
+        "operation": "binaryToPropery",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        592,
+        656
+      ],
+      "id": "c0ed0019-d8cf-417a-ba8c-ca08aaf374f0",
+      "name": "Extract from File"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://content.airtable.com/v0/app9zToc9La73kZP2/{{ $json.id }}/Customized%20Resume/uploadAttachment",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "airtableTokenApi",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "contentType",
+              "value": "application/pdf"
+            },
+            {
+              "name": "file",
+              "value": "={{ $('Extract from File').item.json.data }}"
+            },
+            {
+              "name": "filename",
+              "value": "resume_custom.pdf"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1056,
+        736
+      ],
+      "id": "49da2344-f35f-493c-88b6-dc05afd2b2c2",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4.1",
+          "mode": "list",
+          "cachedResultName": "gpt-4.1"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        -176,
+        752
+      ],
+      "id": "178a2b2b-8ca3-41a9-a0aa-474c9a46b042",
+      "name": "OpenAI Chat Model"
+    },
+    {
+      "parameters": {
+        "actorId": {
+          "__rl": true,
+          "value": "KE649tixwpoRnZtJJ",
+          "mode": "id"
+        },
+        "customBody": "{\n    \"sort\": \"recent\",\n    \"keywords\": \"ai automation\",\n    \"location\": \"united states\"\n}"
+      },
+      "type": "@apify/n8n-nodes-apify.apify",
+      "typeVersion": 1,
+      "position": [
+        -800,
+        160
+      ],
+      "id": "901dd171-f5a8-4836-bdc9-2b865a3a056d",
+      "name": "Run an Actor"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        -576,
+        160
+      ],
+      "id": "b21e041f-a5a8-46cd-a27e-c4ec830be227",
+      "name": "Wait",
+      "webhookId": "27de69ac-69d8-48a3-9721-bb8aabaffe80"
+    },
+    {
+      "parameters": {
+        "resource": "Actor runs",
+        "operation": "Get run",
+        "runId": {
+          "__rl": true,
+          "value": "={{ $('Run an Actor').item.json.id }}",
+          "mode": "id"
+        }
+      },
+      "type": "@apify/n8n-nodes-apify.apify",
+      "typeVersion": 1,
+      "position": [
+        -352,
+        64
+      ],
+      "id": "ea3f9bac-d01f-48b2-91be-acf862bfba5a",
+      "name": "Get run"
+    },
+    {
+      "parameters": {
+        "resource": "Datasets",
+        "datasetId": "={{ $json.defaultDatasetId }}",
+        "offset": {},
+        "limit": {}
+      },
+      "type": "@apify/n8n-nodes-apify.apify",
+      "typeVersion": 1,
+      "position": [
+        96,
+        160
+      ],
+      "id": "8abb886b-ece1-4439-ba33-13ce6d4fdc17",
+      "name": "Get dataset items"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "e6c77cde-90ad-43e5-b3be-de167f2c4e5a",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "SUCCEEDED",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -128,
+        160
+      ],
+      "id": "2454cdd3-7577-4d4e-9344-6bb84021282c",
+      "name": "If1"
+    },
+    {
+      "parameters": {
+        "content": "## Get jobs from LinkedIn",
+        "height": 480,
+        "width": 1728
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -1008,
+        -32
+      ],
+      "typeVersion": 1,
+      "id": "32f96845-e25b-4886-a2db-fa6fb154f407",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "## Evaluate fit",
+        "height": 480,
+        "width": 1072,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -1360,
+        496
+      ],
+      "typeVersion": 1,
+      "id": "a9591921-f2e0-464c-94df-7291ef585a1b",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4.1",
+          "mode": "list",
+          "cachedResultName": "GPT-4.1"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=You are an expert evaluator for AI, automation, and full-stack software development projects. \n\nYour job is to read a job description, extract the true requirements, and then evaluate our fit and complexity level without being biased by vague or overly promotional language.\n\n**Our capabilities**:\n- Strong AI integration skills (OpenAI, ElevenLabs, Replicate, etc.).\n- Advanced no-code/low-code workflow design (Make.com, n8n, Zapier, Airtable, Google tools).\n- RAG-enabled chatbot builds using Supabase.\n- Automation for content creation, lead generation, and API integrations.\n- Solid prompt engineering and workflow architecture (TDA framework: Trigger, Data, Action).\n- Business partner is a full-stack developer proficient in modern web frameworks, custom APIs, and database design.\n\n**Bias-Resistance Process**:\n1. Ignore fluff, hype words, or general statements like \"innovative\" or \"cutting-edge\" unless they are tied to a specific requirement.\n2. Identify only concrete skills, deliverables, and outcomes mentioned.\n3. If a requirement is ambiguous, interpret it in the most common, practical way unless evidence suggests a specialized meaning.\n4. **Upskilling Reality Check**: If the job requires significant learning in areas we have no foundation in (like deep ML/AI theory, complex cloud ML platforms, or enterprise-grade security), heavily penalize the fit score.\n\n**Your tasks**:\n1. **Fit Score (0–100)**: How closely the job aligns with our combined skills.\n2. **Complexity Rating (1–5)**:\n   - 1 = Very simple, quick build, minimal customization.\n   - 2 = Low complexity, straightforward integrations.\n   - 3 = Moderate complexity, some custom logic or integrations.\n   - 4 = High complexity, significant custom code and architecture.\n   - 5 = Very high complexity, cutting-edge or large-scale system.\n3. **Upskilling Requirements**: What major learning would be needed\n4. **Reasoning**: Brief but clear explanation for all scores.\n\n**Output format (JSON)**:\n{\n  \"fit_score\": <number>,\n  \"complexity\": <number>,\n  \"upskilling_requirements\": [\"<major skill gap 1>\", \"<major skill gap 2>\", ...],\n  \"reasoning\": \"<short text covering fit, complexity, freelancer viability, and upskilling penalties>\",\n  \"extracted_requirements\": [\"<skill or deliverable 1>\", \"<skill or deliverable 2>\", ...]\n}\n\nJob Description:\n{{ $json.job_title }} at {{ $json.company }}\n\n{{ $json.description }}"
+            }
+          ]
+        },
+        "simplify": false,
+        "jsonOutput": true,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        -928,
+        608
+      ],
+      "id": "57aba95c-4e43-4661-8d86-4903a9b188b9",
+      "name": "Generate Fit Score"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are an expert recruitment consultant and you understand what HR managers and interviewers are looking for in job applications and cover letters. I will provide you with information about a prospective job and my qualification and experience. Use that to generate an engaging, succinct, and professional cover letter and a resume professional summary. remember to use single quotes instead of double to not break the JSON.\n\nJob Title\n{{ $('Loop Over Items').item.json.job_title }}\n\nJob Description\n{{ $('Loop Over Items').item.json.description }}\n\nCompany LinkedIn\n{{ $('Loop Over Items').item.json.company_url }}\n\nMy expertise and skills:\n- proficient with AI and prompt engineering\n- expert at building workflows and agentic AI using n8n and make.com\n- proficient with APIs\n- specialize in AI automation/agentic AI for content creation, data processing, and process optimization\n- fast learner\n- good communicator\n- have built multiple production grade workflows for previous clients\n\nCurrent executive summary\nExpert AI Automation Consultant specializing in intelligent workflow architecture using the proven TDA framework (Trigger-Data-Action). With 10 years of digital marketing experience and deep expertise in AI platform integrations, I design and implement sophisticated automation solutions that drive measurable business results. Proven track record with OpenAI, ElevenLabs, Replicate APIs, and advanced RAG-enabled chatbot development using Supabase.",
+        "hasOutputParser": true,
+        "messages": {
+          "messageValues": [
+            {
+              "message": "=Output as JSON\n\n{\n\"cover-letter\": \"xyz\",\n\"professional-summary: \"yyy\"\n}"
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.7,
+      "position": [
+        -176,
+        576
+      ],
+      "id": "91529bc0-eae0-441c-a461-7c1e8e23baaa",
+      "name": "Cover Letter and Resume"
+    },
+    {
+      "parameters": {
+        "content": "## Cover letter and custom resume",
+        "height": 480,
+        "width": 1488,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -224,
+        496
+      ],
+      "typeVersion": 1,
+      "id": "0a39253c-0f16-45c4-9d1a-f5782d5e7388",
+      "name": "Sticky Note2"
+    }
+  ],
+  "connections": {
+    "Only Remote": {
+      "main": [
+        [
+          {
+            "node": "Only AI Related",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Only AI Related": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Generate Fit Score",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Cover Letter and Resume",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create a record": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Run an Actor",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Cover Letter and Resume",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from File": {
+      "main": [
+        [
+          {
+            "node": "Create a record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Cover Letter and Resume",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run an Actor": {
+      "main": [
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "Get run",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get run": {
+      "main": [
+        [
+          {
+            "node": "If1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get dataset items": {
+      "main": [
+        [
+          {
+            "node": "Only Remote",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If1": {
+      "main": [
+        [
+          {
+            "node": "Get dataset items",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Fit Score": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cover Letter and Resume": {
+      "main": [
+        [
+          {
+            "node": "HTML",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {
+    "Schedule Trigger": [
+      {
+        "timestamp": "2025-09-21T00:00:57.018+05:30",
+        "Readable date": "September 21st 2025, 12:00:57 am",
+        "Readable time": "12:00:57 am",
+        "Day of week": "Sunday",
+        "Year": "2025",
+        "Month": "September",
+        "Day of month": "21",
+        "Hour": "00",
+        "Minute": "00",
+        "Second": "57",
+        "Timezone": "Asia/Kolkata (UTC+05:30)"
+      }
+    ]
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "fc71b949d08f53cf215947b40ac383142af7a22526b90bc4598a296e288b232a"
+  }
+}

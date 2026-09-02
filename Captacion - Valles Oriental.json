@@ -1,0 +1,1046 @@
+{
+  "name": "Captacion - Valles Oriental",
+  "nodes": [
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a1",
+              "name": "url_idealista",
+              "value": "https://www.idealista.com/venta-viviendas/barcelona/valles-oriental/",
+              "type": "string"
+            },
+            {
+              "id": "a2",
+              "name": "url_fotocasa",
+              "value": "https://www.fotocasa.es/es/comprar/viviendas/barcelona-provincia/valles-oriental/l",
+              "type": "string"
+            },
+            {
+              "id": "a4",
+              "name": "poblacion",
+              "value": "Valles Oriental",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Config Busqueda",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -336,
+        128
+      ],
+      "id": "24613f77-bfa5-43ec-a59a-ff6f4b73b18b"
+    },
+    {
+      "parameters": {
+        "url": "https://api.zenrows.com/v1/",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "url",
+              "value": "={{ $json.url }}"
+            },
+            {
+              "name": "apikey",
+              "value": "1d4dc9b92ea628e2533c88e558feaf27fe5cc395"
+            },
+            {
+              "name": "js_render",
+              "value": "true"
+            },
+            {
+              "name": "premium_proxy",
+              "value": "true"
+            },
+            {
+              "name": "proxy_country",
+              "value": "es"
+            }
+          ]
+        },
+        "options": {
+          "batching": {
+            "batch": {
+              "batchSize": 1,
+              "batchInterval": 3000
+            }
+          }
+        }
+      },
+      "name": "ZenRows Idealista",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        112,
+        -64
+      ],
+      "id": "1072a43a-6f4d-4748-b13e-5094d465457e",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "url": "https://api.zenrows.com/v1/",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "url",
+              "value": "={{ $json.url }}"
+            },
+            {
+              "name": "apikey",
+              "value": "1d4dc9b92ea628e2533c88e558feaf27fe5cc395"
+            },
+            {
+              "name": "js_render",
+              "value": "true"
+            },
+            {
+              "name": "premium_proxy",
+              "value": "true"
+            },
+            {
+              "name": "proxy_country",
+              "value": "es"
+            }
+          ]
+        },
+        "options": {
+          "batching": {
+            "batch": {
+              "batchSize": 1,
+              "batchInterval": 3000
+            }
+          }
+        }
+      },
+      "name": "ZenRows Fotocasa",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        128,
+        208
+      ],
+      "id": "b5f9dc69-72d5-48d4-8798-ba316126bbf1",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const base = $input.first().json.url_idealista;\nconst MAX_PAGINAS = 5;\nconst paginas = [];\nfor (let i = 1; i <= MAX_PAGINAS; i++) {\n  const url = i === 1\n    ? base + '?ordenado-por=fecha-publicacion-desc'\n    : base + 'pagina-' + i + '.htm?ordenado-por=fecha-publicacion-desc';\n  // pairedItem fijo en 0: sin esto se pierde el enlace al item de origen\n  // (Config Busqueda) y $('Config Busqueda') falla mas adelante con\n  // \"Referenced node doesn't exist\".\n  paginas.push({ json: { url, pagina: i }, pairedItem: { item: 0 } });\n}\nreturn paginas;"
+      },
+      "name": "Generar Paginas Idealista",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -96,
+        -80
+      ],
+      "id": "97f709e1-1094-475e-8956-e473fac9c99b"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Fix: Fotocasa ignora '?page=N'/'?pageNumber=N' (confirmado con fetch directo,\n// siempre SSR pagina 1). Paginacion real es un segmento de ruta: base + '/N'.\nconst base = $input.first().json.url_fotocasa;\nconst MAX_PAGINAS = 5;\nconst paginas = [];\nfor (let i = 1; i <= MAX_PAGINAS; i++) {\n  const url = i === 1\n    ? base + '?sortType=publicationDate'\n    : base + '/' + i + '?sortType=publicationDate';\n  // pairedItem fijo en 0: sin esto se pierde el enlace al item de origen\n  // (Config Busqueda) y $('Config Busqueda') falla mas adelante con\n  // \"Referenced node doesn't exist\".\n  paginas.push({ json: { url, pagina: i }, pairedItem: { item: 0 } });\n}\nreturn paginas;"
+      },
+      "name": "Generar Paginas Fotocasa",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -64,
+        224
+      ],
+      "id": "85d88ddf-df37-49d2-82c9-2c27cfee74dd"
+    },
+    {
+      "parameters": {
+        "extractionValues": {
+          "values": [
+            {
+              "key": "titulo",
+              "cssSelector": "article.item:not(.geo-reach-card) .item-info-container a.item-link",
+              "returnArray": true
+            },
+            {
+              "key": "url_relativa",
+              "cssSelector": "article.item:not(.geo-reach-card) .item-info-container a.item-link",
+              "returnValue": "attribute",
+              "attribute": "href",
+              "returnArray": true
+            },
+            {
+              "key": "precio",
+              "cssSelector": "article.item:not(.geo-reach-card) .item-price",
+              "returnArray": true
+            },
+            {
+              "key": "detalles",
+              "cssSelector": "article.item:not(.geo-reach-card) .item-detail-char",
+              "returnArray": true
+            },
+            {
+              "key": "descripcion",
+              "cssSelector": "article.item:not(.geo-reach-card) .item-description",
+              "returnArray": true
+            },
+            {
+              "key": "telefono",
+              "cssSelector": "article.item:not(.geo-reach-card)",
+              "returnValue": "attribute",
+              "attribute": "data-phone",
+              "returnArray": true
+            },
+            {
+              "key": "isProfessional",
+              "cssSelector": "article.item:not(.geo-reach-card)",
+              "returnValue": "attribute",
+              "attribute": "data-is-professional-ad",
+              "returnArray": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Extract Idealista",
+      "type": "n8n-nodes-base.htmlExtract",
+      "typeVersion": 1,
+      "position": [
+        400,
+        -112
+      ],
+      "id": "4a4678cc-0f39-47aa-a559-b2dc29180dd6",
+      "notes": "AJUSTAR selectores CSS: Idealista cambia el HTML con frecuencia, verificar con inspector antes de correr en produccion"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Fotocasa rediseño su web: las clases re-Card-* ya no existen.\n// El listado completo viene embebido como JSON en <script id=\"__initial_props__\">,\n// mucho mas estable que CSS selectors sobre clases utilitarias de Tailwind.\nconst items = [];\n\nconst tipoMap = {\n  Flat: 'Piso',\n  House_Chalet: 'Casa',\n  Duplex: 'Duplex',\n  Penthouse: 'Atico',\n  Studio: 'Estudio',\n  GroundFloor: 'Bajo'\n};\n\nfunction featureVal(features, key) {\n  const f = (features || []).find(x => x.key === key);\n  return f ? f.value : null;\n}\n\nconst paginas = $input.all();\n\nfor (let p = 0; p < paginas.length; p++) {\n  const html = paginas[p].json.data || '';\n  const idx = html.indexOf('__initial_props__');\n  if (idx === -1) continue;\n\n  const scriptStart = html.indexOf('>', idx) + 1;\n  const scriptEnd = html.indexOf('</script>', scriptStart);\n  const jsonText = html.slice(scriptStart, scriptEnd);\n\n  let props;\n  try { props = JSON.parse(jsonText); } catch (e) { continue; }\n\n  const realEstates = (props.initialSearch && props.initialSearch.result && props.initialSearch.result.realEstates) || [];\n\n  for (const r of realEstates) {\n    const m2 = featureVal(r.features, 'surface');\n    const rooms = featureVal(r.features, 'rooms');\n    const tipo = tipoMap[r.buildingSubtype] || tipoMap[r.buildingType] || 'Inmueble';\n    const ubicacion = r.location || (r.address && r.address.city) || '';\n\n    items.push({\n      json: {\n        titulo: tipo + ' en ' + ubicacion,\n        url_relativa: (r.detail && r.detail['es-ES']) || '',\n        precio: r.rawPrice || null,\n        detalles: (m2 ? m2 + ' m² ' : '') + (rooms ? rooms + ' hab.' : ''),\n        descripcion: r.description || '',\n        telefono: r.phone || '',\n        isProfessional: r.clientType === 'professional'\n      },\n      // Bug fix: pairedItem debe apuntar al item de entrada (la pagina) del que\n      // se extrajo este anuncio. Sin esto n8n pierde la trazabilidad hacia atras\n      // en el grafo y '$(\"Config Busqueda\")' en el nodo Normalizar falla con\n      // \"Referenced node doesn't exist\".\n      pairedItem: { item: p }\n    });\n  }\n}\n\nreturn items;"
+      },
+      "name": "Extract Fotocasa",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        400,
+        208
+      ],
+      "id": "0e630f3b-243d-4069-8799-3a64a2c7f2fd",
+      "notes": "Reescrito: Fotocasa cambio de HTML+clases a JSON embebido (__initial_props__). Selectores CSS viejos (re-Card-*) ya no existen en el sitio."
+    },
+    {
+      "parameters": {},
+      "name": "Merge Portales",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        768,
+        64
+      ],
+      "id": "fe223d9c-3cc0-40bf-ba69-f7a89e033bad"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "function parseBool(val) {\n  if (val === true || val === 'true') return true;\n  if (Array.isArray(val) && val.length > 0) return true;\n  return false;\n}\n\nfunction primero(val) {\n  if (Array.isArray(val)) return val[0] || '';\n  return val || '';\n}\n\nconst d = $input.item.json;\n\nfunction limpiarPrecio(texto) {\n  if (!texto) return null;\n  const soloNumeros = texto.toString().replace(/[^0-9]/g, '');\n  return soloNumeros ? parseInt(soloNumeros) : null;\n}\n\nfunction extraerNumero(texto, regex) {\n  if (!texto) return null;\n  const m = texto.match(regex);\n  return m ? parseInt(m[1]) : null;\n}\n\nfunction extraerPlanta(texto) {\n  if (!texto) return null;\n  const t = texto.toLowerCase();\n  if (/\\bático\\b/.test(t)) return 'atico';\n  if (/\\bbajo\\b/.test(t)) return 'bajo';\n  if (/\\bentresuelo\\b/.test(t)) return 'entresuelo';\n  const m = t.match(/(\\d+)\\s*ª\\s*planta/);\n  return m ? m[1] : null;\n}\n\n// Bug fix: url_relativa, titulo y precio llegan como array (returnArray:true en Extract), no string.\nconst urlRelativa = primero(d.url_relativa);\nconst titulo = primero(d.titulo);\nconst precioRaw = primero(d.precio);\n\n// Bug fix: portal ya viene taggeado desde 'Tag Portal Idealista/Fotocasa' (confiable),\n// antes se adivinaba buscando 'fotocasa' en una URL relativa que nunca la contiene.\nconst portal = d.portal || 'desconocido';\nconst urlBaseMap = { idealista: 'https://www.idealista.com', fotocasa: 'https://www.fotocasa.es' };\nconst urlBase = urlBaseMap[portal] || '';\n\nconst matchRef = urlRelativa.match(/(\\d{6,})/);\nconst referencia = matchRef ? matchRef[1] : urlRelativa.slice(-15);\n\nconst detallesArray = d.detalles;\nconst detalles = Array.isArray(detallesArray) ? detallesArray.join(' ') : (detallesArray || '');\nconst m2 = extraerNumero(detalles, /(\\d+)\\s*m/i);\nconst habitaciones = extraerNumero(detalles, /(\\d+)\\s*hab/i);\nconst planta = extraerPlanta(detalles);\n\nconst telArray = d.telefono;\nconst telefono = Array.isArray(telArray) ? (telArray[0] || '') : (telArray || '');\nconst descArray = d.descripcion;\nconst descripcion = (Array.isArray(descArray) ? (descArray[0] || '') : (descArray || '')).slice(0, 500);\n\n// Bug fix: 'zona' llegaba vacio y 'poblacion' traia el nombre de la comarca en\n// vez del municipio real del anuncio. El titulo viene como \"TIPO en UBICACION[,\n// barrio, ...]\"; el ultimo segmento tras las comas es el municipio real.\nconst partesTitulo = titulo.split(' en ');\nconst tipoInmuebleParsed = partesTitulo[0] || '';\nconst restoUbicacion = partesTitulo.slice(1).join(' en ');\nconst segmentosUbicacion = restoUbicacion.split(',').map(s => s.trim()).filter(Boolean);\nconst poblacionReal = segmentosUbicacion.length ? segmentosUbicacion[segmentosUbicacion.length - 1] : '';\n\nreturn {\n  json: {\n    portal: portal,\n    referencia: referencia,\n    url: urlRelativa.startsWith('http') ? urlRelativa : urlBase + urlRelativa,\n    titulo: titulo.trim(),\n    precio: limpiarPrecio(precioRaw),\n    m2: m2,\n    habitaciones: habitaciones,\n    planta: planta,\n    poblacion: poblacionReal,\n    zona: $('Config Busqueda').first().json.poblacion,\n    tipoInmueble: tipoInmuebleParsed,\n    lat: null,\n    lng: null,\n    fechaScrape: new Date().toISOString().slice(0, 10),\n    telefono: telefono,\n    descripcion: descripcion,\n    isProfessional: parseBool(d.isProfessional)\n  }\n};"
+      },
+      "name": "Normalizar",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        944,
+        64
+      ],
+      "id": "31f995d2-2f8e-430a-93f5-6cfeb948e45a"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1opXTRRn0kGWhVQxMZr2eOYs_9-lEzSDrahslxv3qYsE",
+          "mode": "list",
+          "cachedResultName": "Tracking properties",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1opXTRRn0kGWhVQxMZr2eOYs_9-lEzSDrahslxv3qYsE/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1455625309,
+          "mode": "list",
+          "cachedResultName": "Log_Raw",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1opXTRRn0kGWhVQxMZr2eOYs_9-lEzSDrahslxv3qYsE/edit#gid=1455625309"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "name": "Append Log_Raw",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1168,
+        -32
+      ],
+      "id": "98711138-1cac-4848-b3cd-b118110faae4",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "x2fml6F1ZFuszGH3",
+          "name": "aimaq"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1opXTRRn0kGWhVQxMZr2eOYs_9-lEzSDrahslxv3qYsE",
+          "mode": "list",
+          "cachedResultName": "Tracking properties",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1opXTRRn0kGWhVQxMZr2eOYs_9-lEzSDrahslxv3qYsE/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Inmuebles",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1opXTRRn0kGWhVQxMZr2eOYs_9-lEzSDrahslxv3qYsE/edit#gid=0"
+        },
+        "options": {}
+      },
+      "name": "Leer Inmuebles_Master",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        944,
+        368
+      ],
+      "id": "94062bc7-e35e-41ba-8056-9095851cc610",
+      "alwaysOutputData": true,
+      "executeOnce": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "x2fml6F1ZFuszGH3",
+          "name": "aimaq"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const nuevos = $('Normalizar').all();\nconst masterRows = $('Leer Inmuebles_Master').all().map(i => i.json).filter(r => r.id_interno);\n\nfunction normalizarTexto(t) {\n  if (!t) return '';\n  return t.toString().toLowerCase()\n    .normalize('NFD').replace(/[\\u0300-\\u036f]/g, '')\n    .replace(/[^a-z0-9]/g, '');\n}\n\nfunction calcularScore(a, b) {\n  let score = 0;\n  const bPrecio = b.precio_idealista || b.precio_fotocasa;\n  if (a.precio && bPrecio) {\n    const diffPct = Math.abs(a.precio - bPrecio) / bPrecio;\n    if (diffPct < 0.02) score += 30;\n  }\n  if (a.m2 && b.m2 && Math.abs(a.m2 - parseFloat(b.m2)) <= 3) score += 25;\n  if (a.habitaciones && b.habitaciones && a.habitaciones === parseInt(b.habitaciones)) score += 15;\n  return score;\n}\n\nfunction plantaIncompatible(a, b) {\n  // Distinta planta = distinta unidad fisica, casi siempre. Descalifica el\n  // candidato aunque precio/m2/habitaciones coincidan (caso real detectado:\n  // 2 pisos distintos en Mollet del Valles con mismo precio/m2/hab, pero uno\n  // 'Bajo' y otro '5a planta').\n  return !!(a.planta && b.planta && a.planta !== b.planta);\n}\n\nlet masterActualizado = masterRows.map(r => ({...r}));\nlet siguienteId = masterRows.reduce((max, r) => {\n  const n = parseInt((r.id_interno || 'INM-0000').split('-')[1] || 0);\n  return n > max ? n : max;\n}, 0);\n\nconst salidaMaster = [];\nconst salidaHistorico = [];\nconst hoy = new Date().toISOString().slice(0, 10);\n\nfor (const item of nuevos) {\n  const d = item.json;\n  const campoRef = 'ref_' + d.portal;\n  const campoPrecio = 'precio_' + d.portal;\n  const campoLink = 'link_' + d.portal;\n\n  let match = masterActualizado.find(m => m[campoRef] && m[campoRef] === d.referencia);\n\n  if (!match) {\n    const candidatos = masterActualizado.filter(m => normalizarTexto(m.poblacion) === normalizarTexto(d.poblacion));\n    let mejor = null, mejorScore = 0;\n    for (const c of candidatos) {\n      if (plantaIncompatible(d, c)) continue;\n      const s = calcularScore(d, c);\n      if (s > mejorScore) { mejorScore = s; mejor = c; }\n    }\n    if (mejor && mejorScore >= 70) match = mejor;\n  }\n\n  if (match) {\n    match[campoRef] = d.referencia;\n    if (d.url) match[campoLink] = d.url;\n    match.ultimaFechaVista = hoy;\n\n    if (!match._vistoEnEsteLote) {\n      match.vecesVisto = (parseInt(match.vecesVisto) || 0) + 1;\n      match._vistoEnEsteLote = true;\n    }\n    match.activo = true;\n    if (d.telefono) match.telefono = d.telefono;\n    if (d.descripcion) match.descripcion = d.descripcion;\n    if (d.isProfessional) match.isProfessional = true;\n    if (d.planta && !match.planta) match.planta = d.planta;\n\n    // Bug 2 Fix: diasPublicado calculado desde fecha, no desde campo stale de Sheets\n    if (match.fechaPrimeraCaptacion) {\n      const ms = new Date(hoy) - new Date(match.fechaPrimeraCaptacion);\n      match.diasPublicado = Math.floor(ms / (1000 * 60 * 60 * 24));\n    }\n    match.numPortales = [match.ref_idealista, match.ref_fotocasa].filter(Boolean).length;\n\n    const precioAnterior = parseFloat(match[campoPrecio]);\n    const precioNuevo = d.precio;\n    // Bug 1 Fix: Solo registrar en historico si el precio BAJÓ (no subidas)\n    if (precioAnterior && precioNuevo && precioAnterior !== precioNuevo) {\n      if (precioAnterior > precioNuevo) {\n        match._haBajadoPrecio = true;\n        salidaHistorico.push({\n          json: {\n            id_interno: match.id_interno,\n            portal: d.portal,\n            fecha: hoy,\n            precio: precioNuevo,\n            precio_anterior: precioAnterior,\n            precio_m2: d.m2 ? Math.round(precioNuevo / d.m2) : ''\n          }\n        });\n      }\n      // Siempre actualizamos el precio (aunque haya subido)\n      match[campoPrecio] = precioNuevo;\n    } else if (precioNuevo && !precioAnterior) {\n      match[campoPrecio] = precioNuevo;\n    }\n  } else {\n    siguienteId += 1;\n    const idInterno = 'INM-' + String(siguienteId).padStart(4, '0');\n    match = {\n      id_interno: idInterno,\n      descripcion: d.descripcion || '',\n      poblacion: d.poblacion || '',\n      zona: d.zona || '',\n      tipo_inmueble: d.tipoInmueble || '',\n      m2: d.m2 || '',\n      habitaciones: d.habitaciones || '',\n      planta: d.planta || '',\n      ref_idealista: d.portal === 'idealista' ? d.referencia : '',\n      ref_fotocasa: d.portal === 'fotocasa' ? d.referencia : '',\n      precio_idealista: d.portal === 'idealista' ? d.precio || '' : '',\n      precio_fotocasa: d.portal === 'fotocasa' ? d.precio || '' : '',\n      link_idealista: d.portal === 'idealista' ? d.url || '' : '',\n      link_fotocasa: d.portal === 'fotocasa' ? d.url || '' : '',\n      fechaPrimeraCaptacion: hoy,\n      diasPublicado: 0,\n      numPortales: 1,\n      vecesVisto: 1,\n      ultimaFechaVista: hoy,\n      activo: true,\n      telefono: d.telefono || '',\n      isProfessional: d.isProfessional || false,\n      enviadoAEspoCRM: false,\n      _vistoEnEsteLote: true\n    };\n    masterActualizado.push(match);\n  }\n\n  const idx = salidaMaster.findIndex(x => x.json.id_interno === match.id_interno);\n  if (idx === -1) salidaMaster.push({ json: { ...match } });\n  else salidaMaster[idx] = { json: { ...match } };\n}\n\nsalidaMaster.forEach(x => { delete x.json._vistoEnEsteLote; });\n\nreturn [\n  ...salidaMaster.map(x => ({ json: { ...x.json, _tabla: 'master' } })),\n  ...salidaHistorico.map(x => ({ json: { ...x.json, _tabla: 'historico' } }))\n];"
+      },
+      "name": "Matching y Dedup",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1168,
+        368
+      ],
+      "id": "0e74a81c-4964-4e9a-a8fe-9e4b7a136e1a"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json._tabla }}",
+              "rightValue": "master",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              },
+              "id": "91732265-bf19-44b1-a647-e9adf52216b2"
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "name": "Es Master?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1376,
+        368
+      ],
+      "id": "f1061d8d-42f2-4c1c-a43d-d1adbb16d8c6"
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "1opXTRRn0kGWhVQxMZr2eOYs_9-lEzSDrahslxv3qYsE",
+          "mode": "list",
+          "cachedResultName": "Tracking properties",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1opXTRRn0kGWhVQxMZr2eOYs_9-lEzSDrahslxv3qYsE/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Inmuebles",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1opXTRRn0kGWhVQxMZr2eOYs_9-lEzSDrahslxv3qYsE/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "id_interno": "={{ $json.id_interno }}",
+            "descripcion": "={{ $json.descripcion }}",
+            "poblacion": "={{ $json.poblacion }}",
+            "zona": "={{ $json.zona }}",
+            "tipo_inmueble": "={{ $json.tipo_inmueble }}",
+            "m2": "={{ $json.m2 }}",
+            "habitaciones": "={{ $json.habitaciones }}",
+            "ref_idealista": "={{ $json.ref_idealista }}",
+            "ref_fotocasa": "={{ $json.ref_fotocasa }}",
+            "precio_idealista": "={{ $json.precio_idealista }}",
+            "precio_fotocasa": "={{ $json.precio_fotocasa }}",
+            "link_idealista": "={{ $json.link_idealista }}",
+            "link_fotocasa": "={{ $json.link_fotocasa }}",
+            "fechaPrimeraCaptacion": "={{ $json.fechaPrimeraCaptacion }}",
+            "diasPublicado": "={{ $json.diasPublicado }}",
+            "numPortales": "={{ $json.numPortales }}",
+            "vecesVisto": "={{ $json.vecesVisto }}",
+            "ultimaFechaVista": "={{ $json.ultimaFechaVista }}",
+            "telefono": "={{ $json.telefono }}",
+            "isProfessional": "={{ $json.isProfessional }}",
+            "enviadoAEspoCRM": "={{ $json.enviadoAEspoCRM }}",
+            "activo": "={{ $json.activo }}"
+          },
+          "matchingColumns": [
+            "id_interno"
+          ],
+          "schema": [
+            {
+              "id": "id_interno",
+              "displayName": "id_interno",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "descripcion",
+              "displayName": "descripcion",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "poblacion",
+              "displayName": "poblacion",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "zona",
+              "displayName": "zona",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "tipo_inmueble",
+              "displayName": "tipo_inmueble",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "m2",
+              "displayName": "m2",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "habitaciones",
+              "displayName": "habitaciones",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "ref_idealista",
+              "displayName": "ref_idealista",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "ref_fotocasa",
+              "displayName": "ref_fotocasa",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "precio_idealista",
+              "displayName": "precio_idealista",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "precio_fotocasa",
+              "displayName": "precio_fotocasa",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "link_idealista",
+              "displayName": "link_idealista",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "link_fotocasa",
+              "displayName": "link_fotocasa",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "fechaPrimeraCaptacion",
+              "displayName": "fechaPrimeraCaptacion",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "diasPublicado",
+              "displayName": "diasPublicado",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "numPortales",
+              "displayName": "numPortales",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "vecesVisto",
+              "displayName": "vecesVisto",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "ultimaFechaVista",
+              "displayName": "ultimaFechaVista",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "activo",
+              "displayName": "activo",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "telefono",
+              "displayName": "telefono",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "isProfessional",
+              "displayName": "isProfessional",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "enviadoAEspoCRM",
+              "displayName": "enviadoAEspoCRM",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "name": "Upsert Inmuebles_Master",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1600,
+        240
+      ],
+      "id": "d284752b-7ce3-4be1-a6e4-52667c18b6fb",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "x2fml6F1ZFuszGH3",
+          "name": "aimaq"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1opXTRRn0kGWhVQxMZr2eOYs_9-lEzSDrahslxv3qYsE",
+          "mode": "list",
+          "cachedResultName": "Tracking properties",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1opXTRRn0kGWhVQxMZr2eOYs_9-lEzSDrahslxv3qYsE/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1189588557,
+          "mode": "list",
+          "cachedResultName": "Historico_Precios",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1opXTRRn0kGWhVQxMZr2eOYs_9-lEzSDrahslxv3qYsE/edit#gid=1189588557"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "id_interno": "={{ $json.id_interno }}",
+            "portal": "={{ $json.portal }}",
+            "fecha": "={{ $json.precio }}",
+            "precio": "={{ $json.precio_m2 }}",
+            "precio_anterior": "={{ $json.precio_anterior }}",
+            "precio_m2": "={{ $json.precio_m2 }}",
+            "_tabla": "={{ $json._tabla }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "id_interno",
+              "displayName": "id_interno",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "portal",
+              "displayName": "portal",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "fecha",
+              "displayName": "fecha",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "precio",
+              "displayName": "precio",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "precio_anterior",
+              "displayName": "precio_anterior",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "precio_m2",
+              "displayName": "precio_m2",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "_tabla",
+              "displayName": "_tabla",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "name": "Append Historico_Precios",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1600,
+        464
+      ],
+      "id": "8276bbd1-5371-4e8c-b7dd-dfa5c39cdbc8",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "x2fml6F1ZFuszGH3",
+          "name": "aimaq"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Bug fix: htmlExtract con returnArray:true da 1 item POR PAGINA con arrays paralelos\n// (30 anuncios comprimidos en 1 item), no 1 item por anuncio. Sin esto, solo el indice [0]\n// de cada pagina se procesaba, se perdian silenciosamente ~29/30 anuncios por pagina.\n// Aqui se transpone: 1 item de entrada (pagina) -> N items de salida (1 por anuncio).\nconst items = [];\nconst paginas = $input.all();\n\nfor (let p = 0; p < paginas.length; p++) {\n  const d = paginas[p].json;\n  const n = Array.isArray(d.titulo) ? d.titulo.length : 0;\n\n  for (let i = 0; i < n; i++) {\n    items.push({\n      json: {\n        titulo: Array.isArray(d.titulo) ? d.titulo[i] : d.titulo,\n        url_relativa: Array.isArray(d.url_relativa) ? d.url_relativa[i] : d.url_relativa,\n        precio: Array.isArray(d.precio) ? d.precio[i] : d.precio,\n        detalles: Array.isArray(d.detalles) ? d.detalles[i] : d.detalles,\n        descripcion: Array.isArray(d.descripcion) ? d.descripcion[i] : d.descripcion,\n        telefono: Array.isArray(d.telefono) ? d.telefono[i] : d.telefono,\n        isProfessional: Array.isArray(d.isProfessional) ? d.isProfessional[i] : d.isProfessional,\n        portal: 'idealista'\n      },\n      // Bug fix: pairedItem debe apuntar al item de entrada (la pagina) del que\n      // se extrajo este anuncio. Sin esto n8n pierde la trazabilidad hacia atras\n      // en el grafo y '$(\"Config Busqueda\")' en el nodo Normalizar falla con\n      // \"Referenced node doesn't exist\".\n      pairedItem: { item: p }\n    });\n  }\n}\n\nreturn items;"
+      },
+      "name": "Tag Portal Idealista",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        624,
+        -128
+      ],
+      "id": "7c0efe4b-7ddb-4a3c-a246-0c82a820c4e1"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "return { json: { ...$json, portal: 'fotocasa' } };"
+      },
+      "name": "Tag Portal Fotocasa",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        592,
+        240
+      ],
+      "id": "178173d7-1c07-4d50-a66e-ac601ed6b830"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "weeks",
+              "weeksInterval": 2,
+              "triggerAtDay": [
+                1
+              ],
+              "triggerAtHour": 5
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -544,
+        80
+      ],
+      "id": "454a7462-10bf-4dfb-8475-104c280b564b",
+      "name": "Schedule Trigger"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Config Busqueda": {
+      "main": [
+        [
+          {
+            "node": "Generar Paginas Idealista",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Generar Paginas Fotocasa",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ZenRows Idealista": {
+      "main": [
+        [
+          {
+            "node": "Extract Idealista",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ZenRows Fotocasa": {
+      "main": [
+        [
+          {
+            "node": "Extract Fotocasa",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generar Paginas Idealista": {
+      "main": [
+        [
+          {
+            "node": "ZenRows Idealista",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generar Paginas Fotocasa": {
+      "main": [
+        [
+          {
+            "node": "ZenRows Fotocasa",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Idealista": {
+      "main": [
+        [
+          {
+            "node": "Tag Portal Idealista",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Fotocasa": {
+      "main": [
+        [
+          {
+            "node": "Tag Portal Fotocasa",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge Portales": {
+      "main": [
+        [
+          {
+            "node": "Normalizar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalizar": {
+      "main": [
+        [
+          {
+            "node": "Append Log_Raw",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Leer Inmuebles_Master",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Leer Inmuebles_Master": {
+      "main": [
+        [
+          {
+            "node": "Matching y Dedup",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Matching y Dedup": {
+      "main": [
+        [
+          {
+            "node": "Es Master?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Es Master?": {
+      "main": [
+        [
+          {
+            "node": "Upsert Inmuebles_Master",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Append Historico_Precios",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upsert Inmuebles_Master": {
+      "main": [
+        []
+      ]
+    },
+    "Tag Portal Idealista": {
+      "main": [
+        [
+          {
+            "node": "Merge Portales",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tag Portal Fotocasa": {
+      "main": [
+        [
+          {
+            "node": "Merge Portales",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Config Busqueda",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "7dae1c73-2412-4641-94ff-1ba5e6056590",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "cf35f83a3a95fcaafff372fb06821df3f9831cfdf731c264d347f24fea9a0f3c"
+  },
+  "nodeGroups": [],
+  "id": "hMIiS0W4rllLTlhk",
+  "tags": []
+}

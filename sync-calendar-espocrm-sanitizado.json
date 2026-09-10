@@ -1,0 +1,491 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## 🟢 INICIO\nDispara el flujo manualmente.\nEn producción, sustituye este nodo por un **Schedule Trigger** (ej. cada 15-30 min) para que la sincronización sea automática.",
+        "height": 220,
+        "width": 260,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-1760, 1320],
+      "id": "note-1",
+      "name": "Nota - Trigger"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [-1760, 1568],
+      "id": "998544f6-a6ff-4814-876e-3c87dd6c40fe",
+      "name": "Ejecutar manualmente"
+    },
+    {
+      "parameters": {
+        "content": "## 📅 LEER GOOGLE CALENDAR\nTrae TODOS los eventos futuros del calendario configurado.\n\n⚠️ Sustituye el ID del calendario y conecta tus propias credenciales de Google Calendar OAuth2 (se eliminaron por seguridad).",
+        "height": 260,
+        "width": 280,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-1536, 1300],
+      "id": "note-2",
+      "name": "Nota - Google Calendar"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "calendar": {
+          "__rl": true,
+          "value": "TU_CALENDAR_ID@group.calendar.google.com",
+          "mode": "list",
+          "cachedResultName": "Nombre del calendario"
+        },
+        "returnAll": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1.3,
+      "position": [-1536, 1568],
+      "id": "d5a08444-fe07-403c-b9fa-44f642eeef3e",
+      "name": "Obtener eventos futuros",
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "PON_AQUI_TU_CREDENCIAL_ID",
+          "name": "Google Calendar (configurar credencial propia)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## 🧹 LIMPIAR EVENTOS\nDescarta los eventos con status = \"cancelled\" para no crearlos/actualizarlos en el CRM.",
+        "height": 200,
+        "width": 260,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-1328, 1320],
+      "id": "note-3",
+      "name": "Nota - Filtro"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "skip1",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "cancelled",
+              "operator": {
+                "type": "string",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.2,
+      "position": [-1328, 1568],
+      "id": "c800649a-0c6a-41ea-9e75-4b78a328b661",
+      "name": "Descartar cancelados"
+    },
+    {
+      "parameters": {
+        "content": "## 🔧 MAPEAR CAMPOS\nConvierte el formato de Google Calendar al formato que espera EspoCRM:\n- dateStart / dateEnd\n- cGoogleEventId (campo clave para evitar duplicados)\n- name / description",
+        "height": 240,
+        "width": 280,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-1104, 1300],
+      "id": "note-4",
+      "name": "Nota - Formatear"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a1",
+              "name": "dateStart",
+              "type": "string",
+              "value": "={{ $json.start?.dateTime ? $json.start.dateTime.replace('T',' ').substring(0,19) : ($json.start?.date ? $json.start.date + ' 00:00:00' : '') }}"
+            },
+            {
+              "id": "a2",
+              "name": "dateEnd",
+              "type": "string",
+              "value": "={{ $json.end?.dateTime ? $json.end.dateTime.replace('T',' ').substring(0,19) : ($json.end?.date ? $json.end.date + ' 00:00:00' : '') }}"
+            },
+            {
+              "id": "a3",
+              "name": "cGoogleEventId",
+              "type": "string",
+              "value": "={{ $json.id }}"
+            },
+            {
+              "id": "a4",
+              "name": "name",
+              "type": "string",
+              "value": "={{ $json.summary || '(Sin titulo)' }}"
+            },
+            {
+              "id": "a5",
+              "name": "description",
+              "type": "string",
+              "value": "={{ $json.description || '' }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [-1104, 1568],
+      "id": "690c72c9-7903-4d14-b9cb-a1adab974c63",
+      "name": "Formatear datos"
+    },
+    {
+      "parameters": {
+        "content": "## 🔁 PROCESAR UNO A UNO\nRecorre los eventos de uno en uno para no saturar la API de EspoCRM con peticiones simultáneas.",
+        "height": 200,
+        "width": 260,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-880, 1300],
+      "id": "note-5",
+      "name": "Nota - Loop"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [-880, 1568],
+      "id": "283cc2e6-da1d-4ac8-8de1-56d09bab1666",
+      "name": "Loop (1 por 1)"
+    },
+    {
+      "parameters": {
+        "content": "## ⏱️ PAUSA ANTI RATE-LIMIT\nEspera 0.3s entre eventos para no saturar la API de EspoCRM.",
+        "height": 160,
+        "width": 240,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-680, 1220],
+      "id": "note-6",
+      "name": "Nota - Wait"
+    },
+    {
+      "parameters": {
+        "amount": 0.3
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [-656, 1440],
+      "id": "a4a44ec2-8539-416e-ae0e-3a09630bd91b",
+      "name": "Esperar (evitar rate limit)",
+      "webhookId": "2f36fda9-6c8b-4acd-9de7-032ccaf91d80"
+    },
+    {
+      "parameters": {
+        "content": "## 🔍 BUSCAR DUPLICADO EN CRM\nConsulta si ya existe una reunión (Meeting) en EspoCRM con ese mismo cGoogleEventId.\n\n⚠️ Sustituye la URL por tu dominio de EspoCRM y usa una credencial de header auth propia en vez de la API key en texto plano.",
+        "height": 260,
+        "width": 300,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-460, 1100],
+      "id": "note-7",
+      "name": "Nota - Buscar CRM"
+    },
+    {
+      "parameters": {
+        "url": "=https://TU-DOMINIO-ESPOCRM.com/api/v1/Meeting?where[0][type]=equals&where[0][attribute]=cGoogleEventId&where[0][value]={{ $json.cGoogleEventId }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Api-Key",
+              "value": "TU_ESPOCRM_API_KEY"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-448, 1328],
+      "id": "b025224c-ff54-4d9f-a6f2-e4b67ca220ec",
+      "name": "Buscar en EspoCRM"
+    },
+    {
+      "parameters": {
+        "content": "## ❓ DECISIÓN\n¿Ese evento ya existe en el CRM?\n- SÍ → Actualizar\n- NO → Crear",
+        "height": 160,
+        "width": 220,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-220, 1220],
+      "id": "note-8",
+      "name": "Nota - IF"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "c1",
+              "leftValue": "={{ $json.total }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [-208, 1440],
+      "id": "a869dc9d-805e-4018-9f00-39de9b5aed34",
+      "name": "¿Ya existe?"
+    },
+    {
+      "parameters": {
+        "content": "## ✏️ ACTUALIZAR\nSi ya existía, actualiza el registro Meeting en EspoCRM con los datos más recientes del evento de Google Calendar.\n\n⚠️ Sustituye URL y API key.",
+        "height": 200,
+        "width": 260,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [0, 1080],
+      "id": "note-9",
+      "name": "Nota - Actualizar"
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "=https://TU-DOMINIO-ESPOCRM.com/api/v1/Meeting/{{ $json.list[0].id }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Api-Key",
+              "value": "TU_ESPOCRM_API_KEY"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"name\": $('Formatear datos').item.json.name, \"dateStart\": $('Formatear datos').item.json.dateStart, \"dateEnd\": $('Formatear datos').item.json.dateEnd, \"description\": $('Formatear datos').item.json.description } }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [0, 1360],
+      "id": "ef052d9e-f952-4544-aa33-388800245190",
+      "name": "Actualizar Meeting"
+    },
+    {
+      "parameters": {
+        "content": "## ➕ CREAR\nSi no existía, crea un nuevo registro Meeting en EspoCRM y guarda el cGoogleEventId para futuras sincronizaciones.\n\n⚠️ Sustituye URL, API key y assignedUserId por los tuyos.",
+        "height": 220,
+        "width": 260,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-16, 1780],
+      "id": "note-10",
+      "name": "Nota - Crear"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://TU-DOMINIO-ESPOCRM.com/api/v1/Meeting",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Api-Key",
+              "value": "TU_ESPOCRM_API_KEY"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"name\": $('Formatear datos').item.json.name, \"dateStart\": $('Formatear datos').item.json.dateStart, \"dateEnd\": $('Formatear datos').item.json.dateEnd, \"description\": $('Formatear datos').item.json.description, \"cGoogleEventId\": $('Formatear datos').item.json.cGoogleEventId, \"assignedUserId\": \"TU_USER_ID\" } }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-16, 1616],
+      "id": "2aae5f7b-23b2-45a0-9c3f-277ba74a73e7",
+      "name": "Crear Meeting"
+    }
+  ],
+  "connections": {
+    "Ejecutar manualmente": {
+      "main": [
+        [
+          {
+            "node": "Obtener eventos futuros",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Obtener eventos futuros": {
+      "main": [
+        [
+          {
+            "node": "Descartar cancelados",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Descartar cancelados": {
+      "main": [
+        [
+          {
+            "node": "Formatear datos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Formatear datos": {
+      "main": [
+        [
+          {
+            "node": "Loop (1 por 1)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop (1 por 1)": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Esperar (evitar rate limit)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Esperar (evitar rate limit)": {
+      "main": [
+        [
+          {
+            "node": "Buscar en EspoCRM",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar en EspoCRM": {
+      "main": [
+        [
+          {
+            "node": "¿Ya existe?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Ya existe?": {
+      "main": [
+        [
+          {
+            "node": "Actualizar Meeting",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Crear Meeting",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Actualizar Meeting": {
+      "main": [
+        [
+          {
+            "node": "Loop (1 por 1)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Crear Meeting": {
+      "main": [
+        [
+          {
+            "node": "Loop (1 por 1)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  }
+}

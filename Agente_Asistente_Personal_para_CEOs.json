@@ -1,10 +1,10 @@
 {
-  "name": "CEO Assistant",
+  "name": "My workflow 6 - AsistAI (limpio, sin credenciales)",
   "nodes": [
     {
       "parameters": {
         "method": "POST",
-        "url": "https://waapi.app/api/v1/instances/PEGA_AQUI_TU_INSTANCE_ID/client/action/send-media",
+        "url": "https://waapi.app/api/v1/instances/PEGAR_AQUI_TU_INSTANCE_ID/client/action/send-media",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
         "sendHeaders": true,
@@ -47,12 +47,7 @@
       ],
       "id": "5388e4a7-6dcd-46c9-8d0c-356d2394f5c9",
       "name": "HTTP Request",
-      "credentials": {
-        "httpHeaderAuth": {
-          "id": "h5YgyQqaFghtUGvf",
-          "name": "Header Auth account - WaAPI"
-        }
-      }
+      "notes": "FASE 5 (rama AUDIO) - Envio final: toma el audio en Base64 generado por ElevenLabs y lo manda al chat de WhatsApp del usuario como una NOTA DE VOZ (asVoice=true). Endpoint de WaAPI: send-media."
     },
     {
       "parameters": {
@@ -69,7 +64,8 @@
         2260
       ],
       "id": "1444798b-f585-44c0-a90a-c62670c403c0",
-      "name": "AI Agent1"
+      "name": "AI Agent1",
+      "notes": "FASE 3 - CEREBRO DEL AGENTE. Recibe el texto del usuario (venga de chat o de audio transcrito), razona con el modelo o3-mini, y decide que herramienta invocar de entre las 8 disponibles (Tareas, Calendario, Email, Shopify, Meta Ads, Contenido, WhatsApp, Calculadora). Tiene memoria persistente por chatId."
     },
     {
       "parameters": {
@@ -85,7 +81,8 @@
       ],
       "id": "5a210352-41ff-46bb-bd85-0c7c7ca3d542",
       "name": "Webhook",
-      "webhookId": "6adfde98-9f23-456e-ac04-c9de4ed42fde"
+      "webhookId": "6adfde98-9f23-456e-ac04-c9de4ed42fde",
+      "notes": "FASE 1 - PUNTO DE ENTRADA. WaAPI hace un POST a este webhook cada vez que llega un mensaje de WhatsApp. El payload contiene el chatId, el cuerpo del mensaje, el tipo (chat, ptt, image, etc.) y -si es audio- el media en Base64."
     },
     {
       "parameters": {
@@ -102,12 +99,7 @@
       ],
       "id": "f40e9cb9-0699-497c-b91d-bb4e5d3881a3",
       "name": "Postgres Chat Memory",
-      "credentials": {
-        "postgres": {
-          "id": "d2MQJzLt8EQLM71L",
-          "name": "Postgres account - La Tribu Divisual"
-        }
-      }
+      "notes": "FASE 3 (sub-nodo de memoria) - Guarda en Postgres (Supabase) el historial de la conversacion indexado por chatId. Ventana: 50 mensajes. Asi el agente RECUERDA lo que se ha dicho en conversaciones previas con el mismo contacto."
     },
     {
       "parameters": {
@@ -124,7 +116,7 @@
                 "conditions": [
                   {
                     "leftValue": "={{ $json.body.data.message._data.type }}",
-                    "rightValue": "=ptt",
+                    "rightValue": "ptt",
                     "operator": {
                       "type": "string",
                       "operation": "equals"
@@ -173,7 +165,8 @@
         2240
       ],
       "id": "4b02d223-fded-48fa-b4a0-0e3d1e099bd5",
-      "name": "Switch"
+      "name": "Switch",
+      "notes": "FASE 1 (bifurcador) - Clasifica el mensaje entrante segun su tipo: si es 'ptt' (nota de voz) va por la rama Audio, si es 'chat' (texto) va por la rama Texto. Asi el workflow trata cada formato de manera adecuada."
     },
     {
       "parameters": {
@@ -189,12 +182,7 @@
       ],
       "id": "47164cf0-282a-4ebe-8aa2-6929e6e0bfe7",
       "name": "OpenAI1",
-      "credentials": {
-        "openAiApi": {
-          "id": "8hgw1j72mroqso8Q",
-          "name": "OpenAi account"
-        }
-      }
+      "notes": "FASE 2 - Transcriptor de audio. Usa el modelo Whisper de OpenAI para pasar el archivo .ogg de la nota de voz a texto plano. El texto resultante se inyecta al agente."
     },
     {
       "parameters": {
@@ -211,7 +199,8 @@
         2080
       ],
       "id": "64b4367e-e418-4e87-b365-c7e4ccf00d3b",
-      "name": "Convert to File"
+      "name": "Convert to File",
+      "notes": "FASE 2 - Conversor Base64 -> archivo. Toma el audio que viene como string Base64 dentro del payload de WaAPI y lo materializa como archivo .ogg real dentro de n8n para que Whisper pueda procesarlo."
     },
     {
       "parameters": {
@@ -246,13 +235,14 @@
         2040
       ],
       "id": "7dbdb3c4-e893-4ce7-a1b2-2b389374ce1a",
-      "name": "Edit Fields"
+      "name": "Edit Fields",
+      "notes": "FASE 1 - Normalizador. Extrae del payload de WaAPI: el chatId (para saber a quien responder), el cuerpo completo del mensaje (por si lo necesitamos mas adelante) y el texto plano (campo 'text'). Tambien expone 'chatId' como variable de primer nivel para que la SesionKey de Postgres pueda usarlo."
     },
     {
       "parameters": {
-        "content": "## ⚙️ Configuración inicial\n\nPrimero configuramos la entrada de información y seteamos ciertos campos que necesitaremos más adelante. 🛠️🗃️\n",
-        "height": 140,
-        "width": 400
+        "content": "## ⚙️ FASE 1 — Recepción y normalización del mensaje\n\nEsta fase se encarga de recibir el webhook que manda WaAPI cuando llega un mensaje, **limpiar el JSON** y dejarlo listo para que las siguientes fases trabajen con campos estables.\n\n### Nodos incluidos\n- **Webhook** → punto de entrada POST (WaAPI).\n- **Edit Fields** → extrae `chatId`, `body` completo y `text`.\n- **Switch** → bifurca según el tipo:\n    - `ptt` (nota de voz) → rama Audio\n    - `chat` (texto plano) → rama Texto\n",
+        "height": 240,
+        "width": 420
       },
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
@@ -261,13 +251,13 @@
         1800
       ],
       "id": "62176fee-1b85-4855-b527-c4afb77380e5",
-      "name": "Sticky Note"
+      "name": "Sticky Note - FASE 1"
     },
     {
       "parameters": {
-        "content": "## 🧠 Identificación del formato\n\nAhora lo que hacemos es identificar si la información recibida viene en forma de texto o audio. 📝🔉\n",
-        "height": 200,
-        "width": 220,
+        "content": "## 🧠 FASE 2 — Conversión de audio a texto\n\nSi el mensaje llegó como **nota de voz** (`ptt`), hay que pasarlo a texto antes de mandárselo al agente. Esto ocurre solo en la rama Audio del Switch de la Fase 1.\n\n### Pasos\n1. `Convert to File` toma el Base64 del audio y lo convierte en un archivo `.ogg` real dentro de n8n.\n2. `OpenAI1` (Whisper) transcribe el audio a texto.\n3. `Mapeo de mensaje` deja el campo `mensaje` listo para el agente.\n",
+        "height": 240,
+        "width": 260,
         "color": 4
       },
       "type": "n8n-nodes-base.stickyNote",
@@ -281,9 +271,9 @@
     },
     {
       "parameters": {
-        "content": "## ✨ Aquí ocurre la magia\n\nEl agente interpreta la información, accede a sus herramientas (base de datos **vectorial** y **Shopify** en este caso) y devuelve una información. 🧠📚🔍\n",
-        "height": 120,
-        "width": 680,
+        "content": "## ✨ FASE 3 — Cerebro: el agente IA ejecuta la acción\n\nAquí es donde **el agente razona, decide y actúa**.\n\n### Componentes\n- **AI Agent1** (LangChain Agent, modelo `o3-mini`) con system prompt `AsistAI`.\n- **Postgres Chat Memory** → memoria persistente por `chatId` (50 mensajes).\n- **OpenAI Chat Model** → el LLM que da vida al agente.\n- **8 herramientas disponibles** (tool calling):\n    1. MCP Client - Tareas (Google Tasks)\n    2. MCP Client - Calendario (Google Calendar)\n    3. MCP Client - email (Gmail)\n    4. MCP Client - Tienda online (Shopify)\n    5. Enviar Whatsapp (WaAPI, herramienta proactiva)\n    6. Crear contenido redes sociales (workflow anidado)\n    7. Extraer datos de Meta Ads (workflow anidado)\n    8. Calculator\n",
+        "height": 240,
+        "width": 720,
         "color": 3
       },
       "type": "n8n-nodes-base.stickyNote",
@@ -297,7 +287,7 @@
     },
     {
       "parameters": {
-        "content": "## 🔁 Conversión de audio a texto\n\nAquí el audio se convierte: el **Base64** del audio se transforma en un archivo y se descarga en **n8n**. Entonces, **n8n** tiene acceso al archivo y es capaz (mediante un nodo de **Transcribe Recording** de **OpenAI**) de transcribir ese audio. 🧾🎙️\n\n➡️ *Pasar de Audio a Texto*\n",
+        "content": "## 🔁 FASE 2 (detalle) — Audio → Texto → Texto del agente\n\nEl audio llega como `Base64`. Lo convertimos a archivo y se lo pasamos a Whisper.\n\n➡️ *Pasar de Audio a Texto*",
         "height": 260,
         "width": 300,
         "color": 4
@@ -332,12 +322,13 @@
         2260
       ],
       "id": "9513a2ac-8122-4ba9-870a-5703fc0021c4",
-      "name": "Mapeo de mensaje"
+      "name": "Mapeo de mensaje",
+      "notes": "FASE 2 (cierre) - Unifica la entrada al agente: si venia de la rama Texto usa el campo 'text' directamente; si venia de la rama Audio usa el texto transcrito por Whisper. Asi el agente SIEMPRE recibe el campo 'mensaje'."
     },
     {
       "parameters": {
         "method": "POST",
-        "url": "https://api.elevenlabs.io/v1/text-to-speech/PEGA_AQUI_TU_VOICE_ID",
+        "url": "https://api.elevenlabs.io/v1/text-to-speech/PEGAR_AQUI_TU_VOICE_ID",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
         "sendQuery": true,
@@ -372,16 +363,11 @@
       ],
       "id": "5adb53ea-3f7b-438d-9011-9aee07630a0a",
       "name": "Generación de Voz - Eleven Labs",
-      "credentials": {
-        "httpHeaderAuth": {
-          "id": "a2p2aAHLY3BC86wz",
-          "name": "Header Auth account - ElevenLabs"
-        }
-      }
+      "notes": "FASE 5 (rama AUDIO) - Sintetizador de voz. Manda el texto del agente a ElevenLabs con la voz configurada y el modelo `eleven_multilingual_v2`. Devuelve un MP3 binario que se enviara como nota de voz a WhatsApp."
     },
     {
       "parameters": {
-        "content": "## 🔉 Generación y envío de audio\n\nAquí se genera el audio con el nodo **\"Generación de Voz - Eleven Labs\"**. Posteriormente, se convierte el archivo (**File**) a **Base64** y, en el último nodo, se envía a **WhatsApp** mediante **WaAPI**. 📤📲🎧\n",
+        "content": "## 🔉 FASE 5 (rama AUDIO) — Generación de voz y envío\n\nPasos:\n1. `Limpiamos texto` sanea el output del agente (sin HTML, sin caracteres raros).\n2. `Generación de Voz - Eleven Labs` convierte el texto en audio MP3.\n3. `Extract from File` pasa el MP3 binario a Base64.\n4. `HTTP Request` (send-media de WaAPI) entrega la nota de voz al chat.\n",
         "height": 280,
         "width": 220,
         "color": 4
@@ -459,12 +445,13 @@
         2260
       ],
       "id": "a02c7d01-5a72-43cd-bf85-d5bd845de7e8",
-      "name": "Switch1"
+      "name": "Switch1",
+      "notes": "FASE 4 - Bifurcador final. Segun lo que decidio el clasificador GPT-4.1-mini, la respuesta del agente va por la rama Texto o por la rama Audio."
     },
     {
       "parameters": {
         "method": "POST",
-        "url": "https://waapi.app/api/v1/instances/PEGA_AQUI_TU_INSTANCE_ID/client/action/send-message",
+        "url": "https://waapi.app/api/v1/instances/PEGAR_AQUI_TU_INSTANCE_ID/client/action/send-message",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
         "sendHeaders": true,
@@ -493,12 +480,7 @@
       ],
       "id": "e10cae2d-6113-40f0-b440-a744bd65d212",
       "name": "HTTP Request1",
-      "credentials": {
-        "httpHeaderAuth": {
-          "id": "h5YgyQqaFghtUGvf",
-          "name": "Header Auth account - WaAPI"
-        }
-      }
+      "notes": "FASE 5 (rama TEXTO) - Envio final por texto. Manda la respuesta limpia del agente al chat de WhatsApp del usuario via WaAPI send-message."
     },
     {
       "parameters": {
@@ -529,16 +511,11 @@
       ],
       "id": "d5c4e197-d215-4301-aef9-b7446efe366f",
       "name": "OpenAI",
-      "credentials": {
-        "openAiApi": {
-          "id": "8hgw1j72mroqso8Q",
-          "name": "OpenAi account"
-        }
-      }
+      "notes": "FASE 4 - Clasificador audio/texto. Recibe la respuesta del agente y le pide a GPT-4.1-mini que decida si debe devolverse como TEXTO o como AUDIO. Reglas: si hay numeros/datos -> Texto; si el usuario pidio texto -> Texto; en el resto -> 50/50."
     },
     {
       "parameters": {
-        "content": "## 📤 Envío de respuesta\n\nAquí simplemente se envía el texto. 📨📝\n",
+        "content": "## 📤 FASE 5 (rama TEXTO) — Envío de respuesta por texto\n\nLimpia el output del agente (sin HTML) y lo manda al chat de WhatsApp del usuario con la API send-message de WaAPI.\n",
         "height": 280,
         "width": 320,
         "color": 4
@@ -554,7 +531,7 @@
     },
     {
       "parameters": {
-        "content": "## 🧾 Formato de respuesta\n\nEste **GPT** considera si la respuesta debe enviarse en formato **audio** o en formato **texto**, según sea más adecuado. 🔊✍️\n",
+        "content": "## 🧾 FASE 4 — Decisión del formato de respuesta\n\nAqui un **GPT-4.1-mini** mira la respuesta del agente y decide si mandarla como **audio** (nota de voz) o como **texto** escrito, segun el contexto.\n",
         "height": 200,
         "width": 280,
         "color": 2
@@ -580,7 +557,8 @@
         2820
       ],
       "id": "af7415ff-ea33-4395-b8b0-d8b7bfb1f8c7",
-      "name": "Extract from File"
+      "name": "Extract from File",
+      "notes": "FASE 5 (rama AUDIO) - Conversor binario -> propiedad. Toma el MP3 generado por ElevenLabs y lo expone como propiedad (en este caso, el data en Base64 que necesita el send-media de WaAPI)."
     },
     {
       "parameters": {
@@ -593,11 +571,12 @@
         2260
       ],
       "id": "900948f9-44d4-4688-9e10-e6ff70576e14",
-      "name": "Code"
+      "name": "Code",
+      "notes": "FASE 4 - Limpiador de output (HTML, saltos de linea, simbolos raros). Produce un texto plano que sirve como input tanto para el clasificador como para el envio por WhatsApp (rama Texto)."
     },
     {
       "parameters": {
-        "sseEndpoint": "PEGA_AQUI_TU_SSE_DEL_WORKFLOW_MCP_SERVER_TAREAS"
+        "sseEndpoint": "PEGAR_AQUI_TU_SSE_DEL_WORKFLOW_MCP_SERVER_TAREAS"
       },
       "type": "@n8n/n8n-nodes-langchain.mcpClientTool",
       "typeVersion": 1,
@@ -606,11 +585,12 @@
         2540
       ],
       "id": "9e8c36f5-97a2-491e-acec-0480ff18f38d",
-      "name": "MCP Client - Tareas"
+      "name": "MCP Client - Tareas",
+      "notes": "FASE 3 (herramienta) - Permite al agente crear, consultar, actualizar y eliminar tareas en Google Tasks via MCP."
     },
     {
       "parameters": {
-        "sseEndpoint": "PEGA_AQUI_TU_SSE_DEL_WORKFLOW_MCP_SERVER_CALENDARIO"
+        "sseEndpoint": "PEGAR_AQUI_TU_SSE_DEL_WORKFLOW_MCP_SERVER_CALENDARIO"
       },
       "type": "@n8n/n8n-nodes-langchain.mcpClientTool",
       "typeVersion": 1,
@@ -619,13 +599,14 @@
         2540
       ],
       "id": "4aa62111-dbaa-4196-8d1f-d622f4cd4dc5",
-      "name": "MCP Client - Calendario"
+      "name": "MCP Client - Calendario",
+      "notes": "FASE 3 (herramienta) - Permite al agente consultar, agendar o modificar eventos en Google Calendar via MCP."
     },
     {
       "parameters": {
         "toolDescription": "utiliza_esta_herramienta_para_enviar_mensajes_de_whatsapp",
         "method": "POST",
-        "url": "https://waapi.app/api/v1/instances/\"PEGA_AQUI_TU_INSTANCE_ID/client/action/send-message",
+        "url": "https://waapi.app/api/v1/instances/PEGAR_AQUI_TU_INSTANCE_ID/client/action/send-message",
         "sendHeaders": true,
         "parametersHeaders": {
           "values": [
@@ -642,7 +623,7 @@
             {
               "name": "Authorization",
               "valueProvider": "fieldValue",
-              "value": "Bearer PEGA_AQUI_TU_API_KEY_DE_WAAPI"
+              "value": "Bearer PEGAR_AQUI_TU_API_KEY_DE_WAAPI"
             }
           ]
         },
@@ -665,7 +646,8 @@
         2540
       ],
       "id": "0fd91003-de1f-4ddf-9cdf-75a9b40c9a6c",
-      "name": "Enviar Whatsapp"
+      "name": "Enviar Whatsapp",
+      "notes": "FASE 3 (herramienta) - El agente la usa para enviar un WhatsApp a un contacto concreto de la agenda (no al usuario actual, sino a terceros como Juanpe CEO o Maria COO). Usa WaAPI send-message."
     },
     {
       "parameters": {
@@ -685,12 +667,7 @@
       ],
       "id": "f5903692-2d24-4678-aadf-b8da04fec9bc",
       "name": "OpenAI Chat Model",
-      "credentials": {
-        "openAiApi": {
-          "id": "8hgw1j72mroqso8Q",
-          "name": "OpenAi account"
-        }
-      }
+      "notes": "FASE 3 (sub-nodo LLM) - Modelo `o3-mini` que el AI Agent1 usa como razonador. Se conecta por la entrada ai_languageModel."
     },
     {
       "parameters": {},
@@ -701,7 +678,8 @@
         2540
       ],
       "id": "4a10164e-3a1c-432c-9958-4bdaf27345a5",
-      "name": "Calculator"
+      "name": "Calculator",
+      "notes": "FASE 3 (herramienta) - Calculadora que el agente puede invocar para hacer cuentas de precios, margenes, presupuestos, etc."
     },
     {
       "parameters": {
@@ -729,11 +707,12 @@
         2700
       ],
       "id": "3717c2e2-f5d0-4522-a427-6d75f136849a",
-      "name": "Extraer datos de Meta Ads"
+      "name": "Extraer datos de Meta Ads",
+      "notes": "FASE 3 (herramienta) - Dispara el workflow anidado 'Extractor KPIs de Meta Ads' para traer metricas de campanas (inversion, CPC, CPL, conversiones, leads)."
     },
     {
       "parameters": {
-        "sseEndpoint": "PEGA_AQUI_TU_SSE_DEL_WORKFLOW_MCP_SERVER_SHOPIFY"
+        "sseEndpoint": "PEGAR_AQUI_TU_SSE_DEL_WORKFLOW_MCP_SERVER_SHOPIFY"
       },
       "type": "@n8n/n8n-nodes-langchain.mcpClientTool",
       "typeVersion": 1,
@@ -742,11 +721,12 @@
         2700
       ],
       "id": "a75257d9-33c3-4f14-808e-c8e1413614ff",
-      "name": "MCP Client - Tienda online"
+      "name": "MCP Client - Tienda online",
+      "notes": "FASE 3 (herramienta) - Permite al agente revisar productos, pedidos y estado general del e-commerce Shopify via MCP."
     },
     {
       "parameters": {
-        "sseEndpoint": "PEGA_AQUI_TU_SSE_DEL_WORKFLOW_MCP_SERVER_EMAIL",
+        "sseEndpoint": "PEGAR_AQUI_TU_SSE_DEL_WORKFLOW_MCP_SERVER_EMAIL",
         "include": "selected",
         "includeTools": [
           "Gmail_-_comprobar_emails",
@@ -761,7 +741,8 @@
         2700
       ],
       "id": "296a8333-b597-4d26-bd2f-5d720adb2dfc",
-      "name": "MCP Client - email"
+      "name": "MCP Client - email",
+      "notes": "FASE 3 (herramienta) - Da al agente la capacidad de leer correos (Gmail - comprobar emails), etiquetarlos y enviar correos. Solo se exponen esas 3 herramientas por seguridad."
     },
     {
       "parameters": {
@@ -789,7 +770,8 @@
         2700
       ],
       "id": "f6da7311-028e-40d9-acbe-d9dd68737efb",
-      "name": "Crear contenido redes sociales"
+      "name": "Crear contenido redes sociales",
+      "notes": "FASE 3 (herramienta) - Dispara el workflow anidado 'Agente creador de contenido Automatico' para generar copies, ideas o piezas para redes."
     },
     {
       "parameters": {
@@ -802,11 +784,12 @@
         2380
       ],
       "id": "4936064c-5c4b-4f5b-b30d-ff6c8b3ba09f",
-      "name": "Limpiamos texto"
+      "name": "Limpiamos texto",
+      "notes": "FASE 5 (rama AUDIO) - Limpiador especifico para TTS. Saca HTML y simbolos problematicos para la sintesis de voz. ⚠️ OJO: este codigo reemplaza digitos por letras (0->A, 1->B, ...). Revisar si es el comportamiento deseado antes de pasar a ElevenLabs."
     },
     {
       "parameters": {
-        "content": "# 🛠️ Herramientas Utilizadas\n\n| Herramienta      | Descripción                                                                                      | Coste mensual |\n|------------------|--------------------------------------------------------------------------------------------------|---------------|\n\n| **WaAPI**        | Conexión con la API de WhatsApp.                                                                 | $6            |\n\n| **ChatGPT**      | Conversión de audio a texto e interpretación de mensajes (funciona como el \"cerebro\" del agente).| $0 *(asumido)* |\n\n| **Supabase**     | Base de datos (PostgreSQL) para almacenar conversaciones.                                         | $0 *(versión gratuita)* |\n\n| **MCP Servers**  | Optimización del agente, gestión de flujo (incluido en VPS de N8N).                              | $0 *(sin coste adicional)* |\n| **Shopify**      | Control del e-commerce.                                                                           | $0            |\n\n| **Google Tasks** | Gestión de tareas.                                                                                | $0            |\n\n| **Google Calendar** | Gestión del calendario.                                                                      | $0            |\n\n| **Gmail**        | Gestión del correo electrónico.                                                                   | $0            |\n\n| **ElevenLabs**   | Generación de voz para las respuestas del agente.                                                | $11           |\n\n| **Facebook Ads**.  | Controlar todas las campañas de publicidad.                                                | $0           |\n\n---\n\n### 💰 Coste Total Mensual\n\n**$6 (WaAPI) + $11 (ElevenLabs) = $17/mes**\n\n**Hecho con ❤️ por [Juan Pe Navarro](https://www.youtube.com/@juanpe.divisual)**",
+        "content": "# 🛠️ Herramientas externas utilizadas por el agente\n\n| Herramienta        | Descripción                                                                                                | Coste mensual  |\n|--------------------|------------------------------------------------------------------------------------------------------------|----------------|\n| **WaAPI**          | Conexion con la API de WhatsApp.                                                                            | 6 USD          |\n| **OpenAI (ChatGPT)** | LLM (cerebro del agente) + Whisper (transcripcion de audio).                                              | variable       |\n| **Supabase / Postgres** | Base de datos PostgreSQL donde se guarda la memoria de cada chat.                                     | plan free      |\n| **MCP Servers**    | Tareas, Calendario, Email, Tienda: se conectan al agente por SSE.                                           | incluido en VPS|\n| **Shopify**        | Gestion del e-commerce.                                                                                    | incluido       |\n| **Google Tasks**   | Gestion de tareas personales y de equipo.                                                                   | incluido       |\n| **Google Calendar**| Gestion del calendario.                                                                                    | incluido       |\n| **Gmail**          | Gestion del correo electronico.                                                                             | incluido       |\n| **ElevenLabs**     | Sintesis de voz para las respuestas en formato audio.                                                       | 11 USD         |\n| **Facebook Ads**   | Consulta de campanas y KPIs de Meta Ads.                                                                    | incluido       |\n\n---\n\n### Coste fijo mensual estimado: ~17 USD/mes (WaAPI + ElevenLabs).\n",
         "height": 620,
         "width": 640,
         "color": 6
@@ -822,8 +805,8 @@
     },
     {
       "parameters": {
-        "content": "## ⚠️ Importante \nEn las plantillas tienes todos los MCP Servers para importarlos en workflows diferentes y posteriormente conectarlos cada uno con cada uno de estos MCP Client.",
-        "width": 280
+        "content": "## ⚠️ Aviso de configuracion\n\nLos placeholders del tipo `PEGAR_AQUI_TU_*` deben sustituirse por los valores reales de tu entorno:\n\n- `PEGAR_AQUI_TU_INSTANCE_ID` → ID de tu instancia en WaAPI\n- `PEGAR_AQUI_TU_VOICE_ID`    → ID de tu voz en ElevenLabs\n- `PEGAR_AQUI_TU_API_KEY_DE_WAAPI` → API key de WaAPI\n- `PEGAR_AQUI_TU_SSE_DEL_WORKFLOW_MCP_SERVER_TAREAS`\n- `PEGAR_AQUI_TU_SSE_DEL_WORKFLOW_MCP_SERVER_CALENDARIO`\n- `PEGAR_AQUI_TU_SSE_DEL_WORKFLOW_MCP_SERVER_EMAIL`\n- `PEGAR_AQUI_TU_SSE_DEL_WORKFLOW_MCP_SERVER_SHOPIFY`\n\nAdemas, las credenciales nativas (OpenAI, Postgres, ElevenLabs header auth) se vuelven a crear en el panel de **Credentials** de n8n una vez importado el workflow.\n",
+        "width": 320
       },
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
@@ -836,10 +819,9 @@
     },
     {
       "parameters": {
-        "content": "# 🚀 La Tribu Divisual\n\n## Este agente tiene un valor en el mercado de **$2997.00**\n\n\n## Accede a **La Tribu Divisual** para aprender a crear agentes más avanzados y generar altos ingresos con ellos de forma real y segura.\n\n# 👉 [Click aquí para unirte a la Lista de espera](https://divisualproject.academy/)\n",
-        "height": 360,
-        "width": 780,
-        "color": 6
+        "content": "# Resumen de fases del workflow\n\n| Fase | Nombre                                     | Que hace                                                                                  |\n|------|--------------------------------------------|-------------------------------------------------------------------------------------------|\n| 1    | Recepcion y normalizacion                 | Webhook + Edit Fields + Switch (texto vs audio)                                           |\n| 2    | Conversion de audio a texto               | Convert to File + Whisper (OpenAI) + Mapeo de mensaje                                      |\n| 3    | Cerebro IA + herramientas                 | AI Agent1 + memoria Postgres + 8 herramientas (Tareas, Calendario, Email, Shopify, etc.)   |\n| 4    | Limpieza y decision de formato            | Code (limpieza) + GPT-4.1-mini (clasificador) + Switch1                                   |\n| 5    | Entrega de la respuesta al usuario        | Rama Texto: WaAPI send-message  /  Rama Audio: Limpiamos texto + ElevenLabs + send-media  |\n",
+        "height": 200,
+        "width": 820
       },
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,

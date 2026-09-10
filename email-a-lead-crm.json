@@ -1,0 +1,393 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "content": "# 📧 FASE 1 — ENTRADA DE CORREO\nEscucha una bandeja de entrada por IMAP. Cada email nuevo (de portales inmobiliarios o del formulario web) dispara el flujo.\n\n⚠️ Configura tu propia credencial IMAP (se eliminó la incluida por seguridad).",
+        "height": 240,
+        "width": 420,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-1180, 1150],
+      "id": "note-fase1",
+      "name": "Nota - Fase 1"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.emailReadImap",
+      "typeVersion": 2.1,
+      "position": [-1136, 1440],
+      "id": "a4a9bacf-fcf4-498a-8d17-d6ccf9f234a8",
+      "name": "Email Trigger (IMAP)",
+      "credentials": {
+        "imap": {
+          "id": "PON_AQUI_TU_CREDENCIAL_ID",
+          "name": "Email (configurar credencial propia)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "# 🧠 FASE 2 — PARSEO INTELIGENTE\nAquí está la lógica principal: identifica de qué portal viene el email (Idealista, Fotocasa/Habitaclia o formulario propio), extrae nombre, teléfono, email y mensaje, filtra spam/newsletters, distingue si es un lead nuevo o una llamada perdida, y genera una clave de deduplicación (teléfono > email > nombre).",
+        "height": 320,
+        "width": 480,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-990, 1000],
+      "id": "note-fase2",
+      "name": "Nota - Fase 2"
+    },
+    {
+      "parameters": {
+        "jsCode": "// 1. EXTRAER SENDER, DESTINATARIO Y DOMINIO\nlet fromEmail = \"\";\nif (typeof $json.from === \"string\") {\n  fromEmail = $json.from;\n} else if ($json.from && $json.from.value && $json.from.value[0]) {\n  fromEmail = `${$json.from.value[0].name || ''} <${$json.from.value[0].address || ''}>`;\n}\nconst toEmail = (typeof $json.to === \"string\" ? $json.to : \"\") || \"\";\n\n// 2. EXTRAER CUERPO DE TEXTO Y HTML\nconst rawHtml = $json.html || $json.textHtml || \"\";\nconst rawPlain = $json.text || $json.textPlain || $json.plain || \"\";\nconst rawSubject = $json.subject || \"\";\n\n// Limpieza de HTML\nlet cleanHtml = \"\";\nif (rawHtml) {\n  cleanHtml = rawHtml\n    .replace(new RegExp('</(p|div|tr|h[1-6]|li)>', 'gi'), '\\n')\n    .replace(new RegExp('<td[^>]*>', 'gi'), '\\n')\n    .replace(new RegExp('<br\\\\s*/?>', 'gi'), '\\n')\n    .replace(new RegExp('<[^>]*>', 'g'), ' ')\n    .replace(new RegExp('[ \\\\t]+', 'g'), ' ');\n}\n\nfunction fixEncoding(text) {\n  if (typeof text !== 'string') return \"\";\n  return text\n    .replace(/Ã¡/g, 'á').replace(/Ã©/g, 'é').replace(/Ã­/g, 'í')\n    .replace(/Ã³/g, 'ó').replace(/Ãº/g, 'ú').replace(/Ã±/g, 'ñ')\n    .replace(/Ã/g, 'Á').replace(/Ã‰/g, 'É').replace(/Ã/g, 'Í')\n    .replace(/Ã\"/g, 'Ó').replace(/Ãš/g, 'Ú').replace(/Ã'/g, 'Ñ')\n    .replace(/Â/g, '').replace(/&nbsp;/gi, ' ').replace(/&#8202;/gi, ' ');\n}\n\nconst fullContentRaw = rawPlain ? (rawPlain + \"\\n\" + cleanHtml) : cleanHtml;\nconst fullContent = fixEncoding(fullContentRaw);\nconst subject = fixEncoding(rawSubject);\nconst allText = `${fromEmail} ${toEmail} ${subject} ${fullContent}`;\n\n// 2b. DETECCIÓN DEL FORMULARIO DE CONTACTO DE LA PROPIA WEB\nconst esFormularioWebPropio =\n  /medioseideas\\.com/i.test(fromEmail) ||\n  /solicitud de contacto desde la web|nuevo contacto desde la web|formulario de contacto de miranda grup/i.test(allText);\n\n// 3. DETECCIÓN DE SPAM / NEWSLETTER\nconst isSystemOrNewsletter = /no-reply@envios|envios\\.yaencontre|boletin|newsletter|alertas@|notificaciones@|publicidad@|mailing/i.test(fromEmail) ||\n  /mientras llegan|échales un vistazo|inmuebles similares|resumen semanal|nuevas oportunidades|sugerencias para ti|para tu demanda|encajan con lo que (?:nos )?has pedido|coinciden con tu b[uú]squeda|dar(?:te|se)?\\s+de\\s+baja|mailing masivos|unsubscribe/i.test(subject + \" \" + fullContent);\n\n// 4. EXTRACTOR DE TELÉFONOS\nfunction formatPhone(phone) {\n  if (!phone) return null;\n  let cleaned = phone.replace(/[^\\d+]/g, \"\");\n  if (cleaned.length < 9) return null;\n\n  if (!cleaned.startsWith(\"+\")) {\n    if (cleaned.startsWith(\"34\") && cleaned.length >= 11) cleaned = \"+\" + cleaned;\n    else if (cleaned.length === 9) cleaned = \"+34\" + cleaned;\n  }\n  return (cleaned.length >= 11 && cleaned.length <= 15) ? cleaned : null;\n}\n\nfunction extractPhone(text) {\n  if (!text) return null;\n  const explicitMatch = text.match(/(?:teléfono|llamado|número)\\s*:\\s*(\\+?\\d[\\d .-]{8,17})/i);\n  if (explicitMatch) {\n    const formatted = formatPhone(explicitMatch[1]);\n    if (formatted) return formatted;\n  }\n  const genericMatch = text.match(/(?:\\+?34)?[\\s.-]*([6789][\\s.-]*\\d[\\s.-]*\\d[\\s.-]*\\d[\\s.-]*\\d[\\s.-]*\\d[\\s.-]*\\d[\\s.-]*\\d[\\s.-]*\\d)/);\n  if (genericMatch) {\n    return formatPhone(genericMatch[0]);\n  }\n  return null;\n}\n\nlet firstName = \"\"; let lastName = \"\";\nlet emailAddress = null; let propertyTitle = \"\"; let propertyRef = \"\";\nlet leadSource = \"Web Site\"; let leadType = null; let userMessage = \"\";\nlet eventType = \"Lead\";\n\n// EXTRACCIÓN DE EMAIL DESDE CABECERAS (REPLY-TO)\nconst replyTo = $json.metadata?.['reply-to'] || $json.headers?.['reply-to'] || $json['reply-to'] || \"\";\nif (replyTo) {\n  const replyToMatch = replyTo.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}/);\n  if (replyToMatch) {\n    emailAddress = replyToMatch[0].toLowerCase();\n  }\n}\n\n// 5. DETECCIÓN DE LLAMADA\nif (/te ha llamado|llamada en uno de tus anuncios|Llamada no contestada/i.test(allText)) {\n  const isNoAtendida = /no\\s*atendida/i.test(fullContent);\n  const isAtendida = !isNoAtendida && /(estado:\\s*atendida|\\batendida\\b)/i.test(fullContent);\n  if (isAtendida) return [];\n  eventType = \"MissedCall\";\n}\n\nlet phoneNumber = extractPhone(fullContent) || extractPhone(subject);\n\n// 6. EXTRAER DATOS POR PORTAL / FORMULARIO WEB PROPIO\nconst esPortalInmobiliario = /habitaclia|fotocasa|idealista/i.test(allText);\n\nif (/habitaclia|fotocasa/i.test(allText)) {\n  leadSource = \"Fotocasa / Habitaclia\";\n  leadType = \"Comprador / Inquilino\";\n  firstName = eventType === \"Lead\" ? \"Interesado\" : \"Llamada\";\n  lastName = eventType === \"Lead\" ? \"Portal\" : \"Perdida\";\n\n  const refMatch = fullContent.match(/referencia:\\s*([^\\s,\\r\\n]+)/i) || subject.match(/referencia\\s+([A-Z0-9-\\/]+)/i);\n  if (refMatch) propertyRef = refMatch[1].trim();\n\n  if (eventType === \"Lead\") {\n    const nameLabelMatch = fullContent.match(/Nombre:\\s*([^\\n]+?)(?:\\s*Tel[eé]fono:|\\s*Email:|\\.\\s|,\\s|$)/i);\n    const chatNameMatch = fullContent.match(/([A-ZÁÉÍÓÚÑ][\\wÁÉÍÓÚÑáéíóúñ'’-]+(?:[ \\t]+[A-ZÁÉÍÓÚÑ][\\wÁÉÍÓÚÑáéíóúñ'’-]+){1,3})[ \\t]+\\d{1,2}\\/\\d{1,2}\\/\\d{4}\\s*-\\s*\\d{1,2}:\\d{2}/);\n    const nameSource = nameLabelMatch || chatNameMatch;\n    if (nameSource) {\n      const nameParts = nameSource[1].trim().split(/\\s+/);\n      firstName = nameParts[0];\n      lastName = nameParts.slice(1).join(' ') || nameParts[0];\n    }\n\n    const emailLabelMatch = fullContent.match(/Email:\\s*([^\\s\\n]+@[^\\s\\n]+)/i);\n    if (emailLabelMatch) emailAddress = emailLabelMatch[1].trim();\n\n    const phoneLabelMatch = fullContent.match(/Tel[eé]fono:\\s*([^\\n]+)/i);\n    if (phoneLabelMatch) {\n      phoneNumber = /no\\s*especificado/i.test(phoneLabelMatch[1]) ? null : (formatPhone(phoneLabelMatch[1]) || phoneNumber);\n    }\n\n    const msgLabelMatch = fullContent.match(/Mensaje:\\s*([\\s\\S]+?)(?:\\s*Email\\s*\\.|\\s*Gestionar contacto|\\n\\s*\\n\\s*\\n|$)/i);\n    let msgChatText = null;\n    if (!msgLabelMatch && chatNameMatch) {\n      const afterName = fullContent.slice(chatNameMatch.index + chatNameMatch[0].length);\n      const msgChatMatch = afterName.match(/^\\s*([\\s\\S]+?)(?:\\s*Responder\\s|\\s*Mensajes anteriores|\\s*Ver anuncio|$)/i);\n      if (msgChatMatch) msgChatText = msgChatMatch[1];\n    }\n    const msgText = (msgLabelMatch && msgLabelMatch[1]) || msgChatText;\n    if (msgText && msgText.trim()) userMessage += `💬 Mensaje: ${msgText.trim()}\\n`;\n  }\n\n} else if (/idealista/i.test(allText)) {\n  leadSource = eventType === \"MissedCall\" ? \"Idealista - Llamada\" : \"Idealista\";\n  leadType = \"Comprador / Inquilino\";\n\n  if (eventType === \"MissedCall\") {\n    firstName = \"Llamada\";\n    lastName = \"Perdida\";\n  } else {\n    const subjectNameMatch =\n      subject.match(/Nuevo mensaje de\\s+(.+?)\\s+sobre tu inmueble/i) ||\n      subject.match(/Nueva oferta de\\s+(.+?)\\s+sobre tu inmueble/i) ||\n      subject.match(/Respuesta de\\s+(.+?)\\s+sobre tu inmueble/i);\n      \n    if (subjectNameMatch) {\n      const nameParts = subjectNameMatch[1].trim().split(/\\s+/);\n      firstName = nameParts[0];\n      lastName = nameParts.slice(1).join(' ') || nameParts[0];\n    } else {\n      firstName = \"Interesado\";\n      lastName = \"Idealista\";\n    }\n\n    const mailtoMatch = rawHtml.match(/mailto:([^\"'\\s?]+)/i);\n    if (mailtoMatch) {\n      emailAddress = mailtoMatch[1].trim();\n    }\n  }\n\n  const titleFromBody = fullContent.match(/([ÁÉÍÓÚA-Z][^\\n]*?)\\s*Código del anuncio:/i);\n  if (titleFromBody) propertyTitle = titleFromBody[1].trim();\n\n  const refMatch = fullContent.match(/Ref\\.\\s*([A-Z0-9-\\/]+)/i) || fullContent.match(/Código del anuncio[^:]*:\\s*(\\d+)/i);\n  if (refMatch) propertyRef = refMatch[1].trim();\n\n  const offerMatch = fullContent.match(/Ha propuesto un precio de:?\\s*([\\d.,]+\\s*€)\\s*([^\\n]*)/i);\n  if (offerMatch) {\n    userMessage += `💶 Precio ofertado: ${offerMatch[1].trim()}\\n`;\n    const freeText = offerMatch[2].replace(/Responder desde idealista.*/i, '').trim();\n    if (freeText) userMessage += `💬 Mensaje: ${freeText}\\n`;\n  }\n\n} else if (esFormularioWebPropio) {\n  leadSource = \"Web Site\";\n  leadType = \"Comprador / Inquilino\";\n\n  const msgMatch = fullContent.match(/(?:Mensaje|Comentario|Consulta|Descripci[oó]n)\\s*:\\s*([\\s\\S]+?)(?:\\s*(?:Nombre|Email|Tel[eé]fono)\\s*:|$)/i);\n  if (msgMatch) userMessage += `💬 Mensaje: ${msgMatch[1].trim()}\\n`;\n}\n\n// 7. NOMBRE Y EMAIL REALES\nconst nameMatch = fullContent.match(/Nombre:\\s*([^\\n]+?)(?:\\s*Email:|\\s*Tel[eé]fono:|\\.\\s|,\\s|$)/i);\nif (nameMatch) {\n  const parts = nameMatch[1].trim().split(/\\s+/);\n  firstName = parts[0];\n  lastName = parts.slice(1).join(' ') || parts[0];\n}\n\nconst emailMatch = fullContent.match(/Email:\\s*([^\\s\\n]+@[^\\s\\n]+)/i);\nif (emailMatch) emailAddress = emailMatch[1].trim();\n\nif (!firstName && eventType !== \"MissedCall\") {\n  firstName = \"Interesado\";\n  lastName = \"Web\";\n}\n\n// 8. ESTRUCTURA DE DESCRIPCIÓN\nlet description = \"\";\nif (eventType === \"MissedCall\") {\n  description = `🚨 DEVOLVER LLAMADA - CONTACTO DE ${leadSource.toUpperCase()}\\n`;\n  description += `------------------------------------------------------\\n`;\n  description += `📞 Teléfono: ${phoneNumber || \"No indicado\"}\\n`;\n  if (propertyRef)   description += `🔖 Ref. Inmueble: ${propertyRef}\\n`;\n  if (propertyTitle) description += `🏠 Anuncio: ${propertyTitle}\\n`;\n  description += `------------------------------------------------------\\n`;\n} else {\n  const infoLines = [];\n  infoLines.push(`📞 Teléfono: ${phoneNumber || \"No indicado\"}`);\n  if (propertyTitle) infoLines.push(`🏠 Anuncio: ${propertyTitle}`);\n  if (propertyRef)   infoLines.push(`🔖 Ref. Inmueble: ${propertyRef}`);\n  if (userMessage)   infoLines.push(userMessage.trim());\n  description = infoLines.join('\\n');\n}\n\n// 9. CLASIFICACIÓN FINAL: es_lead / spam\nconst palabrasNegocio = /\\bpiso\\b|\\bpisos\\b|alquiler|alquilar|\\bvender\\b|\\bventa\\b|\\bcomprar\\b|inmueble|propiedad|vivienda|\\bvisita\\b|tasaci[oó]n|hipoteca|inmobiliaria|apartamento|casa en|chalet/i;\n\nconst esOrigenValido = esPortalInmobiliario || esFormularioWebPropio;\nconst preguntaPorInmuebles = esOrigenValido || (!isSystemOrNewsletter && palabrasNegocio.test(allText));\n\nconst nombreRealDetectado = !(firstName === \"Interesado\" || firstName === \"Llamada\" || !firstName);\nconst senalDeLeadReal = nombreRealDetectado || !!propertyRef || !!(userMessage && userMessage.trim());\n\nlet category = \"spam\";\nif (eventType === \"MissedCall\") {\n  category = \"es_lead\";\n} else if (preguntaPorInmuebles && !isSystemOrNewsletter && senalDeLeadReal) {\n  category = \"es_lead\";\n} else {\n  category = \"spam\";\n}\n\n// 10. CLAVE DE DEDUPLICACIÓN (Prioriza teléfono para coincidir con la regla de EspoCRM)\nconst isGenericName = firstName === \"Interesado\" || firstName === \"Llamada\";\nconst dedupeKey = phoneNumber || emailAddress || (!isGenericName && firstName ? `${firstName} ${lastName}`.trim() : null);\nconst dedupeField = phoneNumber ? \"phoneNumber\" : (emailAddress ? \"emailAddress\" : (!isGenericName && firstName ? \"name\" : null));\n\nreturn {\n  json: {\n    category: category,\n    eventType: eventType,\n    firstName: firstName,\n    lastName: lastName,\n    phoneNumber: phoneNumber || null,\n    emailAddress: emailAddress,\n    dedupeKey: dedupeKey,\n    dedupeField: dedupeField,\n    description: description,\n    source: leadSource,\n    leadType: leadType,\n    fromEmail: fromEmail,\n    subject: subject,\n    isSystemOrNewsletter: isSystemOrNewsletter\n  }\n};"
+      },
+      "id": "7f113203-c550-4150-96bd-f9a254ee02bd",
+      "name": "Parsear Datos Inteligente (JS)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-912, 1408]
+    },
+    {
+      "parameters": {
+        "content": "# 🧹 FASE 3 — FILTRO ANTI-SPAM\nDescarta cualquier email que no sea una consulta real sobre inmuebles (newsletters, alertas automáticas de portales, boletines).",
+        "height": 220,
+        "width": 300,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-660, 1600],
+      "id": "note-fase3",
+      "name": "Nota - Fase 3"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict", "version": 1 },
+          "conditions": [
+            {
+              "id": "cat-es-lead",
+              "leftValue": "={{ $json.category }}",
+              "rightValue": "es_lead",
+              "operator": { "type": "string", "operation": "equals" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [-624, 1392],
+      "id": "cbe66c3a-f176-4f72-a1ab-f828879f653c",
+      "name": "¿Pregunta por Inmuebles?"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "estado-spam-1",
+              "name": "estadoRevision",
+              "value": "Descartado - No relacionado con inmuebles",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [-496, 1776],
+      "id": "d5d29efc-fe91-4d59-94f1-5deefac52f5a",
+      "name": "No es Lead - Descartar"
+    },
+    {
+      "parameters": {
+        "content": "# 🔀 FASE 4 — ENRUTAR: ¿LEAD O LLAMADA?\nSepara el flujo en dos ramas según el tipo de evento detectado: un lead nuevo (consulta escrita) o una llamada perdida en un anuncio.",
+        "height": 220,
+        "width": 300,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-460, 1040],
+      "id": "note-fase4",
+      "name": "Nota - Fase 4"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict", "version": 1 },
+          "conditions": [
+            {
+              "id": "5fa23d1d-0f2c-4b5b-9b7e-9d2a6a6e5a6a",
+              "leftValue": "={{ $json.eventType }}",
+              "rightValue": "Lead",
+              "operator": { "type": "string", "operation": "equals", "name": "filter.operator.equals" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "54416985-3a2a-473d-9cee-b5d9a7f744fb",
+      "name": "Router: ¿Es Lead o Llamada?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [-432, 1216]
+    },
+    {
+      "parameters": {
+        "content": "# 👤 FASE 5A — RAMA LEAD: DEDUPLICAR Y CREAR\nBusca en el CRM si ya existe un lead con el mismo teléfono/email/nombre. Si ya existe, añade una nota al historial en vez de duplicarlo; si no existe, crea un lead nuevo.\n\n⚠️ Sustituye la URL de EspoCRM y la API key.",
+        "height": 260,
+        "width": 400,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-200, 780],
+      "id": "note-fase5a",
+      "name": "Nota - Fase 5A"
+    },
+    {
+      "parameters": {
+        "url": "https://TU-DOMINIO-ESPOCRM.com/api/v1/Lead",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "where[0][type]", "value": "equals" },
+            { "name": "maxSize", "value": "1" },
+            { "name": "where[0][value]", "value": "={{ $json.dedupeKey || '__sin_contacto__' }}" },
+            { "name": "where[0][attribute]", "value": "={{ $json.dedupeField || 'name' }}" }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "X-Api-Key", "value": "TU_ESPOCRM_API_KEY" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "df5ddcfc-98db-4295-b95c-7f2f3d6f3439",
+      "name": "Buscar Lead en EspoCRM",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [-176, 992]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict", "version": 1 },
+          "conditions": [
+            {
+              "id": "check-exists",
+              "leftValue": "={{ $json.list ? $json.list.length : 0 }}",
+              "rightValue": 0,
+              "operator": { "type": "number", "operation": "gt" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "9a11cabf-ac69-490a-a87a-9e4f02b0d390",
+      "name": "¿Existe Lead?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [96, 1136]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://TU-DOMINIO-ESPOCRM.com/api/v1/Note",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "X-Api-Key", "value": "TU_ESPOCRM_API_KEY" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  post: `📩 Nuevo contacto recibido (posible duplicado del mismo lead):\\n\\n${$('Parsear Datos Inteligente (JS)').item.json.description}`,\n  parentId: $json.list[0].id,\n  parentType: 'Lead'\n}) }}",
+        "options": {}
+      },
+      "id": "8ba976e3-1b5f-4e8d-a183-17068f19d52a",
+      "name": "Añadir Nota al Stream",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [416, 976],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://TU-DOMINIO-ESPOCRM.com/api/v1/Lead",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "X-Api-Key", "value": "TU_ESPOCRM_API_KEY" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ (() => { const d = $('Parsear Datos Inteligente (JS)').item.json; const body = { firstName: d.firstName, lastName: d.lastName, phoneNumber: d.phoneNumber, emailAddress: d.emailAddress, description: d.description, source: d.source }; if (d.leadType) body.cLeadType = d.leadType; return JSON.stringify(body); })() }}",
+        "options": {}
+      },
+      "id": "6633d2a8-6731-48a1-ad9b-908215505886",
+      "name": "Crear Lead Nuevo",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [448, 1280],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "parameters": {
+        "content": "# 📞 FASE 5B — RAMA LLAMADA: DEDUPLICAR Y CREAR\nBusca si ya hay una llamada pendiente registrada para ese teléfono. Si ya existe, la omite; si no, crea una tarea de \"llamada pendiente\" en el CRM para que el agente devuelva la llamada.\n\n⚠️ Sustituye la URL de EspoCRM, la API key y el ID del usuario asignado.",
+        "height": 260,
+        "width": 420,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-260, 1660],
+      "id": "note-fase5b",
+      "name": "Nota - Fase 5B"
+    },
+    {
+      "parameters": {
+        "url": "https://TU-DOMINIO-ESPOCRM.com/api/v1/Call",
+        "sendQuery": true,
+        "specifyQuery": "json",
+        "jsonQuery": "={\n  \"name\": \"where[0][type]\",\n  \"value\": \"equals\"\n},\n{\n  \"name\": \"where[0][attribute]\",\n  \"value\": \"phoneNumber\"\n},\n{\n  \"name\": \"where[0][value]\",\n  \"value\": \"={{ $json.phoneNumber || '__sin_contacto__' }}\"\n},\n{\n  \"name\": \"maxSize\",\n  \"value\": \"1\"\n}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "X-Api-Key", "value": "TU_ESPOCRM_API_KEY" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "33c23d32-13e4-485f-accd-1a5d9764fd9a",
+      "name": "Buscar Llamada Pendiente",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [-256, 1584],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict", "version": 1 },
+          "conditions": [
+            {
+              "id": "check-call-exists",
+              "leftValue": "={{ $json.list ? $json.list.length : 0 }}",
+              "rightValue": 0,
+              "operator": { "type": "number", "operation": "gt" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "405ebbeb-31b7-4108-882e-63c4af1230fa",
+      "name": "¿Existe Llamada Pendiente?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [-64, 1584]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "call-dup-1",
+              "name": "estadoRevision",
+              "value": "Omitido - Llamada pendiente ya registrada",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [176, 1456],
+      "id": "07c3dd95-afb8-4a62-9f65-589f9a02a813",
+      "name": "Llamada Ya Registrada - Omitir"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://TU-DOMINIO-ESPOCRM.com/api/v1/Call",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "X-Api-Key", "value": "TU_ESPOCRM_API_KEY" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ (() => { const d = $('Parsear Datos Inteligente (JS)').item.json; return JSON.stringify({\n  name: `Llamada Perdida (Devolver): ${d.phoneNumber || 'Sin número'}`,\n  status: \"Planned\",\n  direction: \"Outbound\",\n  dateStart: new Date(new Date().getTime() + 10 * 60000).toISOString().split('.')[0] + \"Z\",\n  dateEnd: new Date(new Date().getTime() + 15 * 60000).toISOString().split('.')[0] + \"Z\",\n  assignedUserId: \"TU_USER_ID\",\n  description: d.description || `Llamada perdida. Teléfono: ${d.phoneNumber || 'Desconocido'}`\n}); })() }}",
+        "options": {}
+      },
+      "id": "ac74ba2b-802d-4c4d-b815-7a161a17b929",
+      "name": "Crear Llamada Pendiente",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [272, 1824],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    }
+  ],
+  "connections": {
+    "¿Pregunta por Inmuebles?": {
+      "main": [
+        [{ "node": "Router: ¿Es Lead o Llamada?", "type": "main", "index": 0 }],
+        [{ "node": "No es Lead - Descartar", "type": "main", "index": 0 }]
+      ]
+    },
+    "¿Existe Lead?": {
+      "main": [
+        [{ "node": "Añadir Nota al Stream", "type": "main", "index": 0 }],
+        [{ "node": "Crear Lead Nuevo", "type": "main", "index": 0 }]
+      ]
+    },
+    "Buscar Lead en EspoCRM": { "main": [[{ "node": "¿Existe Lead?", "type": "main", "index": 0 }]] },
+    "Router: ¿Es Lead o Llamada?": {
+      "main": [
+        [{ "node": "Buscar Lead en EspoCRM", "type": "main", "index": 0 }],
+        [{ "node": "Buscar Llamada Pendiente", "type": "main", "index": 0 }]
+      ]
+    },
+    "Parsear Datos Inteligente (JS)": { "main": [[{ "node": "¿Pregunta por Inmuebles?", "type": "main", "index": 0 }]] },
+    "Buscar Llamada Pendiente": { "main": [[{ "node": "¿Existe Llamada Pendiente?", "type": "main", "index": 0 }]] },
+    "¿Existe Llamada Pendiente?": {
+      "main": [
+        [{ "node": "Llamada Ya Registrada - Omitir", "type": "main", "index": 0 }],
+        [{ "node": "Crear Llamada Pendiente", "type": "main", "index": 0 }]
+      ]
+    },
+    "Email Trigger (IMAP)": { "main": [[{ "node": "Parsear Datos Inteligente (JS)", "type": "main", "index": 0 }]] }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  }
+}

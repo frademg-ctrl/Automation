@@ -1,0 +1,189 @@
+{
+  "name": "Recepcionista Virtual de Restaurante y Reserva de Mesas (VAPI + n8n)",
+  "nodes": [
+    {
+      "id": "aa3b9f79-7923-47df-87d8-72ceaa3f0127",
+      "name": "Nota - Descripción general",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [-580, -380],
+      "parameters": {
+        "width": 420,
+        "height": 240,
+        "content": "📝 Descripción\n\nAtiende las llamadas entrantes del restaurante mediante VAPI (agente de voz), que recoge los datos del cliente (nombre, hora de la reserva, número de comensales).\n\nn8n comprueba la disponibilidad de mesas en una base de datos PostgreSQL, reserva la mesa si hay hueco y devuelve la confirmación a VAPI para que se la comunique al cliente por voz.\n\nSon dos flujos independientes, cada uno con su propio webhook, que VAPI llama como si fueran dos herramientas distintas."
+      },
+      "typeVersion": 1
+    },
+    {
+      "id": "3efaa272-9bdb-4db1-bb63-94ffca5a161e",
+      "name": "Nota - Flujo de reserva",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [-100, -260],
+      "parameters": {
+        "color": 4,
+        "width": 780,
+        "height": 280,
+        "content": "## 🔵 FLUJO DE RESERVA\n\nVAPI llama a este webhook cuando el cliente confirma que quiere reservar. Los datos de la reserva se graban en PostgreSQL (upsert: crea la reserva o actualiza la existente) y se devuelve el estado a VAPI para que el agente lo diga en voz alta.\n\n⚠️ Configura tu credencial de PostgreSQL y la tabla real de reservas."
+      },
+      "typeVersion": 1
+    },
+    {
+      "id": "ee35e567-9de8-4518-a66f-0d168a973544",
+      "name": "Trigger: Solicitud de Reserva (VAPI)",
+      "type": "n8n-nodes-base.webhook",
+      "position": [0, -160],
+      "webhookId": "TU_WEBHOOK_ID_RESERVA",
+      "parameters": {
+        "path": "TU_PATH_DE_WEBHOOK_RESERVA",
+        "options": {},
+        "httpMethod": "POST",
+        "responseMode": "responseNode"
+      },
+      "typeVersion": 2,
+      "notes": "Recibe de VAPI la petición de reserva con los datos que el agente de voz ha recogido del cliente."
+    },
+    {
+      "id": "13d32034-198f-4429-9515-f71275ff2333",
+      "name": "Guardar Reserva en Postgres",
+      "type": "n8n-nodes-base.postgres",
+      "position": [220, -160],
+      "parameters": {
+        "table": {
+          "__rl": true,
+          "mode": "name",
+          "value": "PON_AQUI_TU_TABLA_DE_RESERVAS"
+        },
+        "schema": {
+          "__rl": true,
+          "mode": "list",
+          "value": "public"
+        },
+        "columns": {
+          "value": {},
+          "schema": [],
+          "mappingMode": "autoMapInputData",
+          "matchingColumns": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {},
+        "operation": "upsert"
+      },
+      "credentials": {
+        "postgres": {
+          "id": "PON_AQUI_TU_CREDENCIAL_ID",
+          "name": "PostgreSQL (configurar credencial propia)"
+        }
+      },
+      "typeVersion": 2.6,
+      "notes": "Inserta la reserva o actualiza la existente (upsert), evitando duplicados si el cliente llama dos veces."
+    },
+    {
+      "id": "16c88128-1e44-42df-bbd3-2cd7b1c2e6b0",
+      "name": "Responder: Confirmación de Reserva (VAPI)",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "position": [440, -160],
+      "parameters": {
+        "options": {},
+        "respondWith": "json",
+        "responseBody": "={\n    \"results\": [\n        {\n            \"toolCallId\": \"{{ $('Trigger: Solicitud de Reserva (VAPI)').item.json.body.message.toolCalls[0].id }}\",\n            \"result\": \"{{ $json.status }}\"\n        }\n    ]\n}"
+      },
+      "typeVersion": 1.2,
+      "notes": "Devuelve el resultado a VAPI en el formato que espera (toolCallId + result), para que el agente lo comunique por voz."
+    },
+    {
+      "id": "0cc6d135-9098-4be1-8de3-fe027653d3d9",
+      "name": "Nota - Flujo de disponibilidad",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [-100, 20],
+      "parameters": {
+        "color": 3,
+        "width": 780,
+        "height": 280,
+        "content": "## 🟢 FLUJO DE COMPROBACIÓN DE DISPONIBILIDAD\n\nVAPI llama a este webhook mientras habla con el cliente, para saber si hay mesa libre a la hora solicitada. Se consulta PostgreSQL y se devuelve la disponibilidad a VAPI en tiempo real, durante la propia llamada.\n\n⚠️ Configura tu credencial de PostgreSQL y la tabla real de mesas."
+      },
+      "typeVersion": 1
+    },
+    {
+      "id": "0fbfd74a-e2a4-4666-9055-c5d588ad6cff",
+      "name": "Trigger: Consulta de Disponibilidad (VAPI)",
+      "type": "n8n-nodes-base.webhook",
+      "position": [0, 100],
+      "webhookId": "TU_WEBHOOK_ID_DISPONIBILIDAD",
+      "parameters": {
+        "path": "TU_PATH_DE_WEBHOOK_DISPONIBILIDAD",
+        "options": {},
+        "httpMethod": "POST",
+        "responseMode": "responseNode"
+      },
+      "typeVersion": 2,
+      "notes": "Recibe de VAPI la consulta de disponibilidad (fecha, hora y número de comensales)."
+    },
+    {
+      "id": "511c9929-3614-4d09-b1b6-27c14ce304a7",
+      "name": "Consultar Disponibilidad de Mesas (Postgres)",
+      "type": "n8n-nodes-base.postgres",
+      "position": [220, 100],
+      "parameters": {
+        "table": {
+          "__rl": true,
+          "mode": "name",
+          "value": "PON_AQUI_TU_TABLA_DE_MESAS"
+        },
+        "schema": {
+          "__rl": true,
+          "mode": "list",
+          "value": "public"
+        },
+        "options": {},
+        "operation": "select"
+      },
+      "credentials": {
+        "postgres": {
+          "id": "PON_AQUI_TU_CREDENCIAL_ID",
+          "name": "PostgreSQL (configurar credencial propia)"
+        }
+      },
+      "typeVersion": 2.6,
+      "notes": "Consulta las mesas disponibles. Conviene añadir un filtro WHERE por fecha/hora y comensales según tu esquema real."
+    },
+    {
+      "id": "08671a05-f26e-477a-80ab-b6885e10dfd6",
+      "name": "Responder: Estado de Disponibilidad (VAPI)",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "position": [440, 100],
+      "parameters": {
+        "options": {},
+        "respondWith": "json",
+        "responseBody": "={\n    \"results\": [\n        {\n            \"toolCallId\": \"{{ $('Trigger: Consulta de Disponibilidad (VAPI)').item.json.body.message.toolCalls[0].id }}\",\n            \"result\":  \"{{ $json.available }}\"\n        }\n    ]\n}"
+      },
+      "typeVersion": 1.2,
+      "notes": "Devuelve a VAPI si hay o no disponibilidad, en el formato de respuesta de herramienta que espera."
+    }
+  ],
+  "active": false,
+  "pinData": {},
+  "settings": {
+    "timezone": "Europe/Madrid",
+    "callerPolicy": "workflowsFromSameOwner",
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "instanceId": "TU_INSTANCE_ID",
+    "templateCredsSetupCompleted": false
+  },
+  "tags": [],
+  "connections": {
+    "Trigger: Solicitud de Reserva (VAPI)": {
+      "main": [[{ "node": "Guardar Reserva en Postgres", "type": "main", "index": 0 }]]
+    },
+    "Guardar Reserva en Postgres": {
+      "main": [[{ "node": "Responder: Confirmación de Reserva (VAPI)", "type": "main", "index": 0 }]]
+    },
+    "Trigger: Consulta de Disponibilidad (VAPI)": {
+      "main": [[{ "node": "Consultar Disponibilidad de Mesas (Postgres)", "type": "main", "index": 0 }]]
+    },
+    "Consultar Disponibilidad de Mesas (Postgres)": {
+      "main": [[{ "node": "Responder: Estado de Disponibilidad (VAPI)", "type": "main", "index": 0 }]]
+    }
+  }
+}

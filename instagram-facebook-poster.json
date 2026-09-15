@@ -1,0 +1,428 @@
+{
+  "name": "Publicar en Instagram y Facebook (Graph API)",
+  "nodes": [
+    {
+      "id": "b6cd01bd-f98f-4092-81f2-1b8f6e6c4b27",
+      "name": "Nota - Cómo generar un token de corta duración",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [-1320, -300],
+      "parameters": {
+        "width": 540,
+        "height": 1900,
+        "content": "**Cómo generar un token de acceso de Facebook de corta duración para publicar en Instagram + Página de Facebook**\n\n### Qué necesitas\n\n* Una **cuenta de Facebook**\n* Una **Página de Facebook** (debe estar vinculada a una cuenta de Instagram Business si vas a publicar en IG)\n* Acceso a [Meta for Developers](https://developers.facebook.com/)\n\n---\nPaso a paso: cómo generar tu token de corta duración\n\n#### 1. Entra en Meta for Developers\n\n* Visita: [https://developers.facebook.com/apps](https://developers.facebook.com/apps)\n* Inicia sesión con tus credenciales de Facebook\n\n#### 2. Crea una nueva App\n\n* Pulsa el botón azul **Create App**\n* Elige **Other** como tipo de app\n* En la siguiente pantalla, selecciona **Business**\n* Pon un nombre a la app y un email de contacto, y pulsa **Create App**\n\n#### 3. Abre el panel de la App\n\n* Tras crearla, se te redirigirá al panel de la app\n* Desde ahí gestionarás productos, permisos y tokens\n\n#### 4. Añade productos\n\n* En el menú lateral, baja hasta **Add Product**\n* Pulsa **Set Up** en ambos:\n\n  * **Instagram Graph API**\n  * **Facebook Graph API** (si falta, se configura automáticamente al crear la app)\n\n> Si no ves la sección \"Add Product\", tu app puede estar ya limitada a una plantilla concreta o en modo Live. Aun así puedes continuar en el Graph API Explorer.\n\n#### 5. Ve al Graph API Explorer\n\n* Visita: [https://developers.facebook.com/tools/explorer/](https://developers.facebook.com/tools/explorer/)\n* En el desplegable superior derecho, selecciona tu app\n* En \"User or Page\", deja seleccionado **User Token**\n\n#### 6. Genera un User Access Token\n\n* Pulsa **Get Token** > **Get User Access Token**\n* Aparecerá un diálogo de permisos\n\n#### 7. Selecciona los permisos necesarios (scopes)\n\nMarca las siguientes casillas:\n\n* `pages_show_list`\n* `pages_read_engagement`\n* `pages_manage_posts`\n* `instagram_basic`\n* `instagram_content_publish`\n\n> Estos permisos te permiten publicar tanto en Páginas de Facebook como en cuentas de Instagram. Algunos pueden requerir aprobación para uso en producción.\n\n#### 8. Autentica y autoriza\n\n* Aparecerá una ventana para iniciar sesión en Facebook y aprobar la app\n* Asegúrate de autorizar el acceso a tu Página de Facebook y a la cuenta de Instagram vinculada\n\n#### 9. Copia el token de corta duración\n\n* Tras iniciar sesión correctamente, el Graph API Explorer se actualizará\n* Tu nuevo **token de corta duración** aparecerá en la barra superior\n* **Cópialo de inmediato** — este token solo es válido durante 1-2 horas"
+      },
+      "typeVersion": 1
+    },
+    {
+      "id": "fe0a05a4-5e13-4109-86c1-1da8fc5e7a9a",
+      "name": "Nota - Fase 1: Token de corta duración (manual)",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [-720, -300],
+      "parameters": {
+        "width": 1460,
+        "height": 540,
+        "content": "## FASE 1 — Refresco de token de larga duración (60 días)\n\nFacebook solo te da un \"Long Live Token\" (larga duración) si tu cuenta está verificada. Si estás probando o aún no estás verificado, puedes usar este método alternativo.\n\nEl token inicial solo dura unas horas. Con el flujo de abajo lo cambias por uno que dura unos 2 meses. Una vez tengas ese token de 2 meses, pégalo en el nodo \"Refresh token\" y programa el disparador para que se ejecute cada 30-60 días: así se refrescará solo y se guardará en los datos estáticos del workflow.\n\n⚠️ Los datos estáticos (\"static data\") no se generan al usar \"Test workflow\" — usa un nodo de disparo real (por ejemplo, un formulario) para activar el flujo.\n⚠️ Esto es un método provisional para pruebas, no una solución permanente. Para producción, usa la Fase 3 (token de sistema permanente)."
+      },
+      "typeVersion": 1
+    },
+    {
+      "id": "926c9774-6e9b-427f-8916-3ccf4ce30012",
+      "name": "Nota - Fase 2: Publicar con token guardado",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [-720, 340],
+      "parameters": {
+        "color": 5,
+        "width": 1760,
+        "height": 360,
+        "content": "## FASE 2 — Publicar reutilizando el token guardado en datos estáticos\n\nEste bloque recupera el token que la Fase 1 guardó en los datos estáticos del workflow y lo usa para publicar en Instagram y en Facebook, sin necesidad de credencial de n8n (el token se pasa a mano en cada petición)."
+      },
+      "typeVersion": 1
+    },
+    {
+      "id": "1ef57c3d-fc04-4107-82e3-3faf0dcfe2ce",
+      "name": "Nota - Fase 3: Token permanente (recomendado)",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [1080, -80],
+      "parameters": {
+        "width": 680,
+        "height": 1220,
+        "content": "## FASE 3 — Crear un token de usuario de sistema permanente (recomendado)\n\nEste token no caduca y es la mejor opción para automatizaciones.\n\n### 1. Verifica tu negocio\n\n* Ve a https://business.facebook.com/settings/info\n* Completa la verificación del negocio en la pestaña \"Business Info\"\n* Envía tu documentación (a veces basta con el CIF/NIF) y espera la aprobación\n* La aprobación puede tardar de 1 a 5 días laborables\n\n### 2. Crea un usuario de sistema\n\n* En Business Settings, ve a **System Users** > **Add**\n* Asígnale un nombre (por ejemplo, `n8n-bot`) y acceso de **Admin**\n\n### 3. Asigna los recursos al usuario de sistema\n\nEn esa misma pantalla, asigna:\n\n* Tu Página de Facebook (con control total)\n* Tu cuenta de Instagram (vinculada a través de la Página)\n* Tu App\n\n### 4. Genera un token\n\n* Pulsa **Generate Token**\n* Selecciona tu App\n* Pon la caducidad en **Never**\n* Concede estos permisos:\n\n  * `pages_show_list`\n  * `pages_read_engagement`\n  * `pages_manage_posts`\n  * `instagram_basic`\n  * `instagram_content_publish`\n\n> Si no ves `instagram_content_publish`, puede que necesites solicitarlo mediante App Review en el panel de la app.\n\n### 5. Usa este token\n\nGuárdalo en la credencial de Facebook Graph API de n8n."
+      },
+      "typeVersion": 1
+    },
+    {
+      "id": "4fccdc64-1eb2-43a6-82c5-5ebcea2b801b",
+      "name": "Al pulsar 'Execute workflow'",
+      "type": "n8n-nodes-base.manualTrigger",
+      "position": [-560, 480],
+      "parameters": {},
+      "typeVersion": 1,
+      "notes": "Arranca manualmente la Fase 2 (publicar con la credencial predefinida de n8n)."
+    },
+    {
+      "id": "738fabc1-5282-442b-a275-a3943bff890e",
+      "name": "Publicar en Instagram",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [-300, 480],
+      "parameters": {
+        "url": "https://graph.facebook.com/v19.0/PON_AQUI_TU_PAGE_ID/media",
+        "method": "POST",
+        "options": {},
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "authentication": "predefinedCredentialType",
+        "bodyParameters": {
+          "parameters": [
+            { "name": "image_url", "value": "PON_AQUI_LA_URL_DE_TU_IMAGEN" },
+            { "name": "caption", "value": "PON_AQUI_TU_TEXTO" }
+          ]
+        },
+        "nodeCredentialType": "facebookGraphApi"
+      },
+      "credentials": {
+        "facebookGraphApi": {
+          "id": "PON_AQUI_TU_CREDENCIAL_ID",
+          "name": "Facebook Graph API (configurar credencial propia)"
+        }
+      },
+      "typeVersion": 4.2,
+      "notes": "Crea el contenedor de medios en Instagram (paso 1 de 2 para publicar: aún no lo publica)."
+    },
+    {
+      "id": "abb870c7-9241-4503-9fb1-348dcbf29dad",
+      "name": "Esperar 2 Segundos",
+      "type": "n8n-nodes-base.wait",
+      "position": [-120, 480],
+      "webhookId": "c40b180e-016c-4648-898a-5942b8a9b00d",
+      "parameters": {
+        "amount": 2
+      },
+      "typeVersion": 1.1,
+      "notes": "Instagram necesita unos segundos para procesar el contenedor de medios antes de poder publicarlo."
+    },
+    {
+      "id": "da899479-cfaa-4771-bc31-bdb0d4e4a3b7",
+      "name": "Publicar post de Instagram",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [100, 480],
+      "parameters": {
+        "url": "https://graph.facebook.com/v19.0/PON_AQUI_TU_INSTAGRAM_PAGE_ID/media_publish",
+        "method": "POST",
+        "options": {},
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "authentication": "predefinedCredentialType",
+        "bodyParameters": {
+          "parameters": [
+            { "name": "creation_id", "value": "={{ $json.id }}" }
+          ]
+        },
+        "nodeCredentialType": "facebookGraphApi"
+      },
+      "credentials": {
+        "facebookGraphApi": {
+          "id": "PON_AQUI_TU_CREDENCIAL_ID",
+          "name": "Facebook Graph API (configurar credencial propia)"
+        }
+      },
+      "typeVersion": 4.2,
+      "notes": "Publica de verdad el contenedor de medios creado en el paso anterior."
+    },
+    {
+      "id": "395e1149-cb03-45f3-97b1-1a5fe8e4ac06",
+      "name": "Obtener token de página con token de sistema",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [320, 480],
+      "parameters": {
+        "url": "https://graph.facebook.com/v19.0/me/accounts",
+        "options": {},
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "facebookGraphApi"
+      },
+      "credentials": {
+        "facebookGraphApi": {
+          "id": "PON_AQUI_TU_CREDENCIAL_ID",
+          "name": "Facebook Graph API (configurar credencial propia)"
+        }
+      },
+      "typeVersion": 4.2,
+      "notes": "Con el token de usuario/sistema, lista todas las Páginas administradas y su token específico de cada una."
+    },
+    {
+      "id": "4eaa4823-7601-49d1-9cec-da232ac7ee62",
+      "name": "Obtener token correcto de la página",
+      "type": "n8n-nodes-base.code",
+      "position": [560, 480],
+      "parameters": {
+        "jsCode": "const page = $json.data.find(p => p.id === 'PON_AQUI_TU_PAGE_ID');\nreturn [{ json: { access_token: page.access_token } }];\n"
+      },
+      "typeVersion": 2,
+      "notes": "De la lista de Páginas, extrae el token de la Página concreta donde quieres publicar. Sustituye PON_AQUI_TU_PAGE_ID por tu ID real."
+    },
+    {
+      "id": "5a279b05-d40f-47b6-a7f1-56daa21ff773",
+      "name": "Publicar en Facebook",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [780, 480],
+      "parameters": {
+        "url": "https://graph.facebook.com/v19.0/PON_AQUI_TU_PAGE_ID/photos",
+        "method": "POST",
+        "options": {},
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "authentication": "predefinedCredentialType",
+        "bodyParameters": {
+          "parameters": [
+            { "name": "url", "value": "PON_AQUI_LA_URL_DE_TU_IMAGEN" },
+            { "name": "caption", "value": "PON_AQUI_TU_TEXTO" },
+            { "name": "access_token", "value": "={{ $json.data[0].access_token }}" }
+          ]
+        },
+        "nodeCredentialType": "facebookGraphApi"
+      },
+      "credentials": {
+        "facebookGraphApi": {
+          "id": "PON_AQUI_TU_CREDENCIAL_ID",
+          "name": "Facebook Graph API (configurar credencial propia)"
+        }
+      },
+      "typeVersion": 4.2,
+      "notes": "Publica la foto en la Página de Facebook, usando el token de página obtenido en el paso anterior. Ojo: aquí lee $json.data[0], que solo es correcto si esa página es la primera de la lista; usa mejor el resultado de 'Obtener token correcto de la página'."
+    },
+    {
+      "id": "e93d120b-ef7b-491c-bfcf-3d6a1ec62786",
+      "name": "Disparador Programado (cada 30 días)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "position": [-680, -120],
+      "parameters": {
+        "rule": {
+          "interval": [
+            { "daysInterval": 30, "triggerAtHour": 1 }
+          ]
+        }
+      },
+      "typeVersion": 1.2,
+      "notes": "Dispara el refresco del token cada 30 días, antes de que caduque (dura unos 60 días)."
+    },
+    {
+      "id": "097bde34-8787-4e0d-9dec-90f2de9c0aa1",
+      "name": "Obtener token actual",
+      "type": "n8n-nodes-base.code",
+      "position": [-500, -120],
+      "parameters": {
+        "jsCode": "const staticData = $getWorkflowStaticData('global');\nreturn [{\n  json: {\n    token: staticData.fb_token\n  }\n}];\n"
+      },
+      "typeVersion": 2,
+      "notes": "Lee el token guardado la última vez en los datos estáticos del workflow."
+    },
+    {
+      "id": "cce6d146-599e-439a-bff6-fc0870a8df02",
+      "name": "Refrescar token",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [-300, -120],
+      "parameters": {
+        "url": "https://graph.facebook.com/v19.0/oauth/access_token",
+        "options": {},
+        "sendQuery": true,
+        "authentication": "predefinedCredentialType",
+        "queryParameters": {
+          "parameters": [
+            { "name": "grant_type", "value": "fb_exchange_token" },
+            { "name": "client_id", "value": "PON_AQUI_TU_CLIENT_ID" },
+            { "name": "client_secret", "value": "PON_AQUI_TU_CLIENT_SECRET" },
+            { "name": "fb_exchange_token", "value": "PON_AQUI_TU_TOKEN_CORTO" }
+          ]
+        },
+        "nodeCredentialType": "facebookGraphApi"
+      },
+      "credentials": {
+        "facebookGraphApi": {
+          "id": "PON_AQUI_TU_CREDENCIAL_ID",
+          "name": "Facebook Graph API (configurar credencial propia)"
+        }
+      },
+      "typeVersion": 4.2,
+      "notes": "Intercambia el token actual por uno nuevo de larga duración (~60 días). La primera vez, pega aquí a mano tu token corto inicial."
+    },
+    {
+      "id": "75f115f5-eee8-4e85-bd35-8c70ac4c13c5",
+      "name": "Guardar en datos estáticos",
+      "type": "n8n-nodes-base.code",
+      "position": [-80, -120],
+      "parameters": {
+        "jsCode": "const staticData = $getWorkflowStaticData('global');\nstaticData.fb_token = $json.access_token;\n\nreturn [{\n  json: {\n    status: 'Token guardado en los datos estaticos',\n    token: staticData.fb_token\n  }\n}];\n"
+      },
+      "typeVersion": 2,
+      "notes": "Guarda el nuevo token de larga duración en los datos estáticos del workflow, para que la Fase 2 lo reutilice."
+    },
+    {
+      "id": "95439d8f-c568-497a-901f-69b2cfd7172f",
+      "name": "Obtener token de datos estáticos",
+      "type": "n8n-nodes-base.code",
+      "position": [-640, 60],
+      "parameters": {
+        "jsCode": "const staticData = $getWorkflowStaticData('global');\nreturn [{\n  json: {\n    token: staticData.fb_token\n  }\n}];\n"
+      },
+      "typeVersion": 2,
+      "notes": "Recupera el token guardado por la Fase 1, para usarlo al publicar sin credencial de n8n."
+    },
+    {
+      "id": "b13db71d-0620-46d4-a9f9-17b693930af4",
+      "name": "Publicar en Instagram (con token guardado)",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [-420, 60],
+      "parameters": {
+        "url": "https://graph.facebook.com/v19.0/PON_AQUI_TU_INSTAGRAM_PAGE_ID/media",
+        "method": "POST",
+        "options": {},
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            { "name": "image_url", "value": "PON_AQUI_LA_URL_DE_TU_IMAGEN" },
+            { "name": "caption", "value": "PON_AQUI_TU_TEXTO" },
+            { "name": "access_token", "value": "={{ $json.token }}" }
+          ]
+        }
+      },
+      "typeVersion": 4.2,
+      "notes": "Igual que 'Publicar en Instagram' de la Fase 2, pero pasando el token a mano en vez de usar una credencial de n8n."
+    },
+    {
+      "id": "70120c0d-d21a-4fa2-b8d5-81931c198c65",
+      "name": "Esperar 2 Segundos (2)",
+      "type": "n8n-nodes-base.wait",
+      "position": [-240, 60],
+      "webhookId": "c40b180e-016c-4648-898a-5942b8a9b00d",
+      "parameters": {
+        "amount": 2
+      },
+      "typeVersion": 1.1,
+      "notes": "Misma espera de rigor antes de poder publicar el contenedor de medios."
+    },
+    {
+      "id": "72bb812b-7ccf-4703-8d6d-35feb3576792",
+      "name": "Publicar post de Instagram (con token guardado)",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [-60, 60],
+      "parameters": {
+        "url": "https://graph.facebook.com/v19.0/PON_AQUI_TU_INSTAGRAM_PAGE_ID/media_publish",
+        "method": "POST",
+        "options": {},
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            { "name": "creation_id", "value": "={{ $json.id }}" },
+            { "name": "access_token", "value": "={{ $('Obtener token de datos estáticos').item.json.token }}" }
+          ]
+        }
+      },
+      "typeVersion": 4.2,
+      "notes": "Publica el contenedor de medios, usando el mismo token guardado."
+    },
+    {
+      "id": "4cde11f4-c12f-4827-94ce-9ee9d11d821d",
+      "name": "Obtener token de página con token guardado",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [160, 60],
+      "parameters": {
+        "url": "https://graph.facebook.com/v19.0/me/accounts",
+        "options": {},
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "access_token", "value": "={{ $('Obtener token de datos estáticos').item.json.token }}" }
+          ]
+        }
+      },
+      "typeVersion": 4.2,
+      "notes": "Lista las Páginas administradas usando el token guardado en datos estáticos."
+    },
+    {
+      "id": "f7581a1c-d095-4fe9-951c-cc6b6108156a",
+      "name": "Obtener token correcto de la página (2)",
+      "type": "n8n-nodes-base.code",
+      "position": [380, 60],
+      "parameters": {
+        "jsCode": "const page = $json.data.find(p => p.id === 'PON_AQUI_TU_PAGE_ID');\nreturn [{ json: { access_token: page.access_token } }];\n"
+      },
+      "typeVersion": 2,
+      "notes": "Extrae el token de la Página concreta donde quieres publicar. Sustituye PON_AQUI_TU_PAGE_ID por tu ID real."
+    },
+    {
+      "id": "306bb9bb-5ba0-4ecd-96a8-33e3ec292526",
+      "name": "Publicar en Facebook (con token guardado)",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [580, 60],
+      "parameters": {
+        "url": "https://graph.facebook.com/v19.0/PON_AQUI_TU_PAGE_ID/photos",
+        "method": "POST",
+        "options": {},
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            { "name": "url", "value": "PON_AQUI_LA_URL_DE_TU_IMAGEN" },
+            { "name": "caption", "value": "PON_AQUI_TU_TEXTO" },
+            { "name": "access_token", "value": "={{ $json.data[0].access_token }}" }
+          ]
+        }
+      },
+      "typeVersion": 4.2,
+      "notes": "Publica en Facebook con el token guardado. Mismo aviso que en la Fase 2: usa el resultado de 'Obtener token correcto de la página (2)' en vez de data[0] si esa página no es siempre la primera."
+    }
+  ],
+  "pinData": {},
+  "meta": {
+    "instanceId": "TU_INSTANCE_ID",
+    "templateCredsSetupCompleted": false
+  },
+  "connections": {
+    "Al pulsar 'Execute workflow'": {
+      "main": [[{ "node": "Publicar en Instagram", "type": "main", "index": 0 }]]
+    },
+    "Publicar en Instagram": {
+      "main": [[{ "node": "Esperar 2 Segundos", "type": "main", "index": 0 }]]
+    },
+    "Esperar 2 Segundos": {
+      "main": [[{ "node": "Publicar post de Instagram", "type": "main", "index": 0 }]]
+    },
+    "Publicar post de Instagram": {
+      "main": [[{ "node": "Obtener token de página con token de sistema", "type": "main", "index": 0 }]]
+    },
+    "Obtener token de página con token de sistema": {
+      "main": [[{ "node": "Obtener token correcto de la página", "type": "main", "index": 0 }]]
+    },
+    "Obtener token correcto de la página": {
+      "main": [[{ "node": "Publicar en Facebook", "type": "main", "index": 0 }]]
+    },
+    "Disparador Programado (cada 30 días)": {
+      "main": [[{ "node": "Obtener token actual", "type": "main", "index": 0 }]]
+    },
+    "Obtener token actual": {
+      "main": [[{ "node": "Refrescar token", "type": "main", "index": 0 }]]
+    },
+    "Refrescar token": {
+      "main": [[{ "node": "Guardar en datos estáticos", "type": "main", "index": 0 }]]
+    },
+    "Obtener token de datos estáticos": {
+      "main": [[{ "node": "Publicar en Instagram (con token guardado)", "type": "main", "index": 0 }]]
+    },
+    "Publicar en Instagram (con token guardado)": {
+      "main": [[{ "node": "Esperar 2 Segundos (2)", "type": "main", "index": 0 }]]
+    },
+    "Esperar 2 Segundos (2)": {
+      "main": [[{ "node": "Publicar post de Instagram (con token guardado)", "type": "main", "index": 0 }]]
+    },
+    "Publicar post de Instagram (con token guardado)": {
+      "main": [[{ "node": "Obtener token de página con token guardado", "type": "main", "index": 0 }]]
+    },
+    "Obtener token de página con token guardado": {
+      "main": [[{ "node": "Obtener token correcto de la página (2)", "type": "main", "index": 0 }]]
+    },
+    "Obtener token correcto de la página (2)": {
+      "main": [[{ "node": "Publicar en Facebook (con token guardado)", "type": "main", "index": 0 }]]
+    }
+  }
+}

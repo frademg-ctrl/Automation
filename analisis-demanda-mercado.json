@@ -1,0 +1,400 @@
+{
+  "name": "Analizar Demanda de Mercado con GPT-4o y XPOZ MCP, con informes en Notion y Email",
+  "nodes": [
+    {
+      "id": "78a65ae9-6282-4cba-aee6-0bbc52cf8e59",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [-1648, -848],
+      "parameters": {
+        "width": 816,
+        "height": 608,
+        "content": "## 🔎 Analizar Demanda de Mercado con GPT-4o y XPOZ MCP, con informes en Notion y Email\n\n### Cómo funciona\nEste workflow se ejecuta con un disparador programado para hacer investigación de mercado automática sobre un nicho y un tema concretos. Inyecta un nicho, una consulta de investigación y unas notas de analista predefinidos, y luego rastrea discusiones públicas en buscadores y redes sociales para identificar señales reales de demanda.\n\nUn agente de IA especializado en investigación de mercado analiza esas conversaciones públicas para descubrir puntos de dolor de los clientes, necesidades no cubiertas, intención de compra o cambio de proveedor, e insatisfacción con las soluciones existentes. El ruido de bajo valor (tutoriales, promociones, charla genérica) se descarta.\n\nLos insights validados se transforman en dos salidas: un resumen listo para pegar en Notion (documentación interna) y un email profesional para el cliente que destaca los hallazgos clave en lenguaje sencillo. Ambas salidas se generan automáticamente, sin revisión manual.\n\nPor último, el workflow guarda los insights en una base de datos de Notion para seguimiento a largo plazo, y envía el email a los interesados, permitiendo inteligencia de mercado continua sin investigación manual repetitiva.\n\n### Pasos de configuración\n1. Configura la frecuencia del disparador programado.\n2. Actualiza el nicho, la consulta y las notas de investigación si lo necesitas.\n3. Conecta tus credenciales de OpenAI.\n4. Añade las credenciales de inteligencia social MCP (Xpoz).\n5. Configura el acceso a tu base de datos de Notion.\n6. Indica la dirección de email del destinatario."
+      },
+      "typeVersion": 1
+    },
+    {
+      "id": "8ec07943-b901-42b4-a0ff-973c50ab1c4a",
+      "name": "Sticky Note6",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [1056, -992],
+      "parameters": {
+        "color": 4,
+        "width": 624,
+        "height": 576,
+        "content": "## 🎥 Vídeo demo del workflow\n\nMira un recorrido breve que explica:\n• Qué hace esta automatización\n• Cómo fluyen los datos\n• Cómo configurar las credenciales\n• Errores comunes a evitar\n\n@[youtube](QnpauEj5Ck8)"
+      },
+      "typeVersion": 1
+    },
+    {
+      "id": "5e1e7b67-ea9c-4e65-ac96-090fb75608ed",
+      "name": "Sticky Note1",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [-560, -208],
+      "parameters": {
+        "color": 7,
+        "width": 496,
+        "height": 512,
+        "content": "## Programación y contexto de investigación\nControla cuándo se ejecuta la investigación y define el nicho, las palabras clave y el enfoque del analista."
+      },
+      "typeVersion": 1
+    },
+    {
+      "id": "b09a495c-095a-49d0-b9cf-05a864b6e89b",
+      "name": "Disparador Programado de Investigación de Mercado",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "position": [-480, 16],
+      "parameters": {
+        "rule": {
+          "interval": [{}]
+        }
+      },
+      "typeVersion": 1.3,
+      "notes": "Arranca el workflow según la programación configurada (por defecto, revisa el intervalo antes de activarlo)."
+    },
+    {
+      "id": "25189cbd-6271-436b-bc39-44d43387fbd1",
+      "name": "Inyectar Nicho, Consulta y Notas de Investigación",
+      "type": "n8n-nodes-base.set",
+      "position": [-208, 16],
+      "parameters": {
+        "options": {},
+        "assignments": {
+          "assignments": [
+            {
+              "id": "105bdfc5-b28e-4d96-a993-af24e5b24fff",
+              "name": "body.niche",
+              "type": "string",
+              "value": "=n8n automations"
+            },
+            {
+              "id": "619782c6-212c-4782-86f7-6f7819f1c294",
+              "name": "body.query",
+              "type": "string",
+              "value": "=Lead generation and CRM automation using n8n"
+            },
+            {
+              "id": "d9859010-1dcd-494d-a197-a4d833291fa3",
+              "name": "body.notes",
+              "type": "string",
+              "value": "=Focus on common automation use cases, pain points, and complaints about building or maintaining n8n workflows. Look for people asking for templates, integrations, or alternatives."
+            }
+          ]
+        }
+      },
+      "typeVersion": 3.4,
+      "notes": "Define el nicho, la consulta de investigación y las notas de enfoque para el agente de IA. Cambia estos tres valores por tu propio nicho/tema."
+    },
+    {
+      "id": "733783ee-22ec-4716-8869-66067ecfe200",
+      "name": "Sticky Note2",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [32, -176],
+      "parameters": {
+        "color": 7,
+        "width": 400,
+        "height": 640,
+        "content": "## Descubrimiento de señales de demanda de mercado\nAnaliza discusiones públicas para identificar problemas reales, demanda e intención de compra."
+      },
+      "typeVersion": 1
+    },
+    {
+      "id": "e0789a80-86b3-4b67-8c7e-3be9491d236b",
+      "name": "Analizar Discusiones Públicas en Busca de Señales de Demanda (IA)",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "position": [112, 16],
+      "parameters": {
+        "text": "=ANALYSIS REQUEST:\n\nNiche: \"{{ $json.body.niche }}\"\nResearch Topic / Keywords: \"{{ $json.body.query }}\"\nnotes : {{ $json.body.notes }}\n\nTask:\nAnalyze public discussions related to the given niche and keywords across the selected platforms.\n\nFocus on:\n- Real customer pain points and frustrations\n- Marketing and growth challenges\n- Mentions of competitors or existing tools\n- Complaints, limitations, or pricing issues with current solutions\n- Posts where users ask for tools, alternatives, or recommendations\n- Language users naturally use to describe their problems\n\nGoal:\nIdentify high-signal market demand and actionable startup opportunities.\n\nReturn insights only if they show real demand or buying intent.\nIgnore generic discussions, tutorials, promotions, or news-only content.\n",
+        "options": {
+          "maxIterations": 30,
+          "systemMessage": "You are a market research and growth intelligence analyst.\n\nYou specialize in:\n- Startup idea validation\n- Marketing gap analysis\n- Competitive intelligence\n- Buying-intent detection from public online discussions\n\nYou have access to connected search and social intelligence tools that allow you to analyze public data from:\n- Google Search\n- Twitter/X\n- Instagram\n\nYour responsibilities:\n1. Extract only high-signal insights (real problems, unmet needs, demand)\n2. Identify competitor weaknesses or dissatisfaction\n3. Detect buying or switching intent\n4. Focus on insights useful for founders, marketers, and growth teams\n\nRules:\n- Use only public information\n- Do NOT invent private data\n- Be concise and factual\n- Prefer insight over volume\n- Avoid marketing fluff\n\nIf no strong demand signals exist, clearly state that demand is weak or unclear.\n"
+        },
+        "promptType": "define",
+        "hasOutputParser": true
+      },
+      "typeVersion": 3,
+      "notes": "Agente principal: analiza las discusiones públicas encontradas por la herramienta MCP y extrae señales de demanda real (dolor, intención de compra, quejas sobre la competencia)."
+    },
+    {
+      "id": "dbe246d9-0eeb-4e80-adb9-5c374f6f77a1",
+      "name": "Conector de Búsqueda Pública e Inteligencia Social (MCP Client)",
+      "type": "@n8n/n8n-nodes-langchain.mcpClientTool",
+      "position": [272, 288],
+      "parameters": {
+        "options": {},
+        "endpointUrl": "https://mcp.xpoz.ai/mcp",
+        "authentication": "bearerAuth"
+      },
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "PON_AQUI_TU_CREDENCIAL_ID",
+          "name": "XPOZ MCP (configurar credencial propia)"
+        }
+      },
+      "typeVersion": 1.2,
+      "rewireOutputLogTo": "ai_tool",
+      "notes": "Herramienta que da acceso al agente a datos públicos de Google, Twitter/X e Instagram a través del servicio XPOZ."
+    },
+    {
+      "id": "810c6014-efa3-48eb-b06e-0c04f26a1068",
+      "name": "Motor de Razonamiento OpenAI para Extracción de Señales",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "position": [80, 272],
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4o",
+          "cachedResultName": "gpt-4o"
+        },
+        "options": {},
+        "responsesApiEnabled": false
+      },
+      "credentials": {
+        "openAiApi": {
+          "id": "PON_AQUI_TU_CREDENCIAL_ID",
+          "name": "OpenAI (configurar credencial propia)"
+        }
+      },
+      "typeVersion": 1.3,
+      "notes": "Modelo usado por el agente de análisis de discusiones públicas."
+    },
+    {
+      "id": "c0448194-bf23-42fb-8003-2966f6e53e20",
+      "name": "Sticky Note3",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [528, -128],
+      "parameters": {
+        "color": 7,
+        "width": 336,
+        "height": 560,
+        "content": "## Conversión y formateo de insights\nTransforma los insights en bruto en resúmenes para Notion y emails listos para el cliente."
+      },
+      "typeVersion": 1
+    },
+    {
+      "id": "92012dd0-85bb-4510-97c9-c15b81a7b961",
+      "name": "Convertir Señales de Mercado en Resumen Notion y Email (IA)",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "position": [576, 16],
+      "parameters": {
+        "text": "=You are given market insight data collected from public discussions.\n\nTASK:\n\n1. Create a Notion-ready summary:\n   - Short\n   - Plain text\n   - Easy to paste directly into a Notion page\n   - Focus on key insights, problems, and opportunities\n\n2. Create a customer-ready email:\n   - Professional subject line\n   - Short introduction\n   - Key insights in simple language\n   - Clear value for the customer\n   - Neutral CTA (no selling pressure)\n\nReturn ONLY valid JSON in the following structure:\n\n{\n  \"notion_summary\": \"text\",\n  \"email\": {\n    \"subject\": \"text\",\n    \"body\": \"text\"\n  }\n}\n\nHere is the input data:\n{{ $json.output }}\n",
+        "options": {
+          "maxIterations": 30,
+          "systemMessage": "You are an AI Operations Analyst.\n\nYour task is to transform raw market or insight data into:\n1. A concise Notion-ready summary\n2. A professional customer-ready email\n\nRules:\n- Be clear, business-focused, and non-technical\n- Do NOT use markdown\n- Do NOT include emojis\n- Keep language simple and actionable\n- No hallucinations or new data\n- Use only the provided input content\n- Output MUST be valid JSON only\n\nTone:\n- Professional\n- Insight-driven\n- Customer-friendly\n\nLength rules:\n- Notion summary: 4–6 short bullet-style lines (plain text)\n- Email: concise, value-focused, easy to skim\n"
+        },
+        "promptType": "define"
+      },
+      "typeVersion": 3,
+      "notes": "Convierte los insights en bruto del agente anterior en un resumen para Notion y un email para el cliente, devueltos como JSON."
+    },
+    {
+      "id": "0328136b-1139-4053-8f4d-dcc8d65d9170",
+      "name": "Motor de Razonamiento OpenAI para Formateo de Insights",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "position": [576, 272],
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4o",
+          "cachedResultName": "gpt-4o"
+        },
+        "options": {},
+        "responsesApiEnabled": false
+      },
+      "credentials": {
+        "openAiApi": {
+          "id": "PON_AQUI_TU_CREDENCIAL_ID",
+          "name": "OpenAI (configurar credencial propia)"
+        }
+      },
+      "typeVersion": 1.3,
+      "notes": "Modelo usado por el agente que da formato al resumen de Notion y al email."
+    },
+    {
+      "id": "8901c706-5abf-4251-a8ef-387c4b43f6cf",
+      "name": "Sticky Note4",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [912, -128],
+      "parameters": {
+        "color": 7,
+        "width": 336,
+        "height": 336,
+        "content": "## Parseo y validación de la salida\nParsea y valida la salida estructurada de la IA para poder usarla de forma segura en los siguientes pasos."
+      },
+      "typeVersion": 1
+    },
+    {
+      "id": "e794d9fc-bbca-451e-8667-da23b383f3a0",
+      "name": "Parsear la Salida Estructurada de la IA",
+      "type": "n8n-nodes-base.code",
+      "position": [1040, 16],
+      "parameters": {
+        "jsCode": "// Obtener la salida de la IA (string)\nconst rawOutput = $json.output;\n\n// Comprobacion de seguridad\nif (!rawOutput || typeof rawOutput !== 'string') {\n  throw new Error('No se encontro una salida valida de la IA para parsear');\n}\n\nlet parsedOutput;\n\ntry {\n  parsedOutput = JSON.parse(rawOutput);\n} catch (error) {\n  throw new Error('No se pudo parsear la salida de la IA como JSON');\n}\n\n// Devolver el JSON limpio para los nodos siguientes\nreturn [\n  {\n    json: parsedOutput\n  }\n];\n"
+      },
+      "typeVersion": 2,
+      "notes": "Convierte el texto JSON devuelto por la IA en un objeto real. Si la IA devuelve algo que no es JSON válido, el workflow falla aquí (y dispara el Error Handler)."
+    },
+    {
+      "id": "cae5f79a-89c2-4980-9e53-52a8d494259f",
+      "name": "Sticky Note5",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [1280, -352],
+      "parameters": {
+        "color": 7,
+        "width": 368,
+        "height": 816,
+        "content": "## Distribución y almacenamiento del conocimiento\nGuarda los insights en Notion y envía los resúmenes a los interesados."
+      },
+      "typeVersion": 1
+    },
+    {
+      "id": "b5a4fd96-9a7e-44aa-a534-4e310dafd863",
+      "name": "Guardar Insight de Investigación en Base de Datos de Notion",
+      "type": "n8n-nodes-base.notion",
+      "position": [1408, -160],
+      "parameters": {
+        "title": "=data",
+        "simple": false,
+        "options": {},
+        "resource": "databasePage",
+        "databaseId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "PON_AQUI_EL_ID_DE_TU_BASE_DE_DATOS",
+          "cachedResultName": "Selecciona tu base de datos de Notion"
+        },
+        "propertiesUi": {
+          "propertyValues": [
+            {
+              "key": "summery|title",
+              "title": "={{ $json.notion_summary }}"
+            }
+          ]
+        }
+      },
+      "credentials": {
+        "notionApi": {
+          "id": "PON_AQUI_TU_CREDENCIAL_ID",
+          "name": "Notion (configurar credencial propia)"
+        }
+      },
+      "typeVersion": 2.2,
+      "notes": "Guarda el resumen en una página nueva de tu base de datos de Notion, para llevar un histórico de investigaciones de mercado."
+    },
+    {
+      "id": "2eb4ed33-015f-45f7-ba81-c3b5fa211b99",
+      "name": "Enviar Email de Insight de Mercado al Interesado",
+      "type": "n8n-nodes-base.gmail",
+      "position": [1408, 208],
+      "webhookId": "TU_WEBHOOK_ID_GMAIL_1",
+      "parameters": {
+        "sendTo": "PON_AQUI_EL_EMAIL_DESTINATARIO",
+        "message": "={{ $json.email.body }}",
+        "options": {},
+        "subject": "={{ $json.email.subject }}",
+        "emailType": "text"
+      },
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "PON_AQUI_TU_CREDENCIAL_ID",
+          "name": "Gmail (configurar credencial propia)"
+        }
+      },
+      "typeVersion": 2.2,
+      "notes": "Envía el email ya redactado al destinatario configurado (cliente, jefe de producto, equipo de marketing, etc.)."
+    },
+    {
+      "id": "ac5dfa8c-e898-47e7-aba5-b6874ea1e30f",
+      "name": "Sticky Note7",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [-720, 688],
+      "parameters": {
+        "color": 7,
+        "width": 672,
+        "height": 336,
+        "content": "## Gestión de errores\nEnvía una alerta por email cuando el workflow falla, indicando en qué nodo ocurrió el error y el mensaje exacto."
+      },
+      "typeVersion": 1
+    },
+    {
+      "id": "ba71fddd-0f4b-40d4-9fb7-066b81310771",
+      "name": "Gestor de Errores del Workflow",
+      "type": "n8n-nodes-base.errorTrigger",
+      "position": [-640, 848],
+      "parameters": {},
+      "typeVersion": 1,
+      "notes": "Se activa automáticamente si cualquier nodo del workflow falla durante la ejecución."
+    },
+    {
+      "id": "c2894b99-27d7-4b68-9ca6-161e862687cc",
+      "name": "Enviar Alerta de Error",
+      "type": "n8n-nodes-base.gmail",
+      "position": [-288, 848],
+      "webhookId": "TU_WEBHOOK_ID_GMAIL_2",
+      "parameters": {
+        "sendTo": "PON_AQUI_EL_EMAIL_DE_ALERTAS",
+        "message": "=🚨 *Alerta de Error del Workflow*  *Nodo con error:* {{ $json.node.name }} *Mensaje de error:* {{ $json.error.message }} *Fecha y hora:* {{ $now.toISO() }}  Por favor, revísalo cuanto antes.",
+        "options": {},
+        "subject": "Alerta de Error del Workflow",
+        "emailType": "text"
+      },
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "PON_AQUI_TU_CREDENCIAL_ID",
+          "name": "Gmail (configurar credencial propia)"
+        }
+      },
+      "typeVersion": 2.2,
+      "notes": "Envía un email de alerta con el nodo y el mensaje de error exactos, para poder reaccionar rápido si algo falla."
+    }
+  ],
+  "active": false,
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "instanceId": "TU_INSTANCE_ID",
+    "templateCredsSetupCompleted": false
+  },
+  "tags": [],
+  "connections": {
+    "Disparador Programado de Investigación de Mercado": {
+      "main": [[{ "node": "Inyectar Nicho, Consulta y Notas de Investigación", "type": "main", "index": 0 }]]
+    },
+    "Inyectar Nicho, Consulta y Notas de Investigación": {
+      "main": [[{ "node": "Analizar Discusiones Públicas en Busca de Señales de Demanda (IA)", "type": "main", "index": 0 }]]
+    },
+    "Analizar Discusiones Públicas en Busca de Señales de Demanda (IA)": {
+      "main": [[{ "node": "Convertir Señales de Mercado en Resumen Notion y Email (IA)", "type": "main", "index": 0 }]]
+    },
+    "Conector de Búsqueda Pública e Inteligencia Social (MCP Client)": {
+      "ai_tool": [[{ "node": "Analizar Discusiones Públicas en Busca de Señales de Demanda (IA)", "type": "ai_tool", "index": 0 }]]
+    },
+    "Motor de Razonamiento OpenAI para Extracción de Señales": {
+      "ai_languageModel": [[{ "node": "Analizar Discusiones Públicas en Busca de Señales de Demanda (IA)", "type": "ai_languageModel", "index": 0 }]]
+    },
+    "Convertir Señales de Mercado en Resumen Notion y Email (IA)": {
+      "main": [[{ "node": "Parsear la Salida Estructurada de la IA", "type": "main", "index": 0 }]]
+    },
+    "Motor de Razonamiento OpenAI para Formateo de Insights": {
+      "ai_languageModel": [[{ "node": "Convertir Señales de Mercado en Resumen Notion y Email (IA)", "type": "ai_languageModel", "index": 0 }]]
+    },
+    "Parsear la Salida Estructurada de la IA": {
+      "main": [
+        [
+          { "node": "Guardar Insight de Investigación en Base de Datos de Notion", "type": "main", "index": 0 },
+          { "node": "Enviar Email de Insight de Mercado al Interesado", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Guardar Insight de Investigación en Base de Datos de Notion": {
+      "main": [[]]
+    },
+    "Gestor de Errores del Workflow": {
+      "main": [[{ "node": "Enviar Alerta de Error", "type": "main", "index": 0 }]]
+    }
+  }
+}

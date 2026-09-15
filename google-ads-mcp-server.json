@@ -1,0 +1,102 @@
+{
+  "name": "Servidor MCP de Herramientas de Google Ads",
+  "nodes": [
+    {
+      "id": "c3630d25-5ef6-428f-a7b1-ae5509da8386",
+      "name": "Resumen del Workflow",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [-1460, -180],
+      "parameters": {
+        "width": 420,
+        "height": 760,
+        "content": "## 🛠️ Servidor MCP de Herramientas de Google Ads\n\n### 📋 Operaciones disponibles (2 en total)\n\n**Campaña**: obtener todas, obtener una\n\n### ⚙️ Instrucciones de configuración\n\n1. **Importar el workflow**: carga este workflow en tu instancia de n8n.\n2. **🔑 Añadir credenciales**: configura la autenticación de Google Ads en un nodo de herramienta, y luego abre y cierra el resto para que hereden la misma credencial.\n3. **🚀 Activar**: activa este workflow para que el servidor MCP quede en marcha.\n4. **🔗 Obtener la URL**: copia la URL del webhook desde el nodo del disparador MCP (a la derecha).\n5. **🤖 Conectar**: usa esa URL de MCP en la configuración de tu agente de IA.\n\n### ✨ Listo para usar\n\n• Cero configuración adicional — las 2 operaciones ya están montadas.\n• Los agentes de IA rellenan los parámetros automáticamente mediante expresiones `$fromAI()`.\n• Disponible cada combinación de recurso y operación.\n• Manejo de errores y formateo de respuestas nativos de n8n.\n• Puedes modificar los valores por defecto de los parámetros en cualquier nodo de herramienta.\n\n### 💬 ¿Necesitas ayuda?\nConsulta la [documentación de n8n](https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.toolmcp/) para orientación sobre integración MCP o personalizaciones."
+      },
+      "typeVersion": 1
+    },
+    {
+      "id": "3102d683-89b8-40fd-9713-5a0e84679c50",
+      "name": "Nota - Campaña",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [-1000, 120],
+      "parameters": {
+        "color": 4,
+        "width": 620,
+        "height": 180,
+        "content": "## Campaña\n\nLas dos herramientas de abajo exponen las operaciones de lectura de campañas de Google Ads (listar todas / obtener una por ID) para que el agente de IA las use como herramientas MCP."
+      },
+      "typeVersion": 1
+    },
+    {
+      "id": "666967ee-c5fe-4187-9be5-d07bddfe69b5",
+      "name": "Servidor MCP de Google Ads",
+      "type": "@n8n/n8n-nodes-langchain.mcpTrigger",
+      "position": [-660, -160],
+      "webhookId": "TU_WEBHOOK_ID",
+      "parameters": {
+        "path": "google-ads-tool-mcp"
+      },
+      "typeVersion": 1,
+      "notes": "Punto de entrada MCP: expone las herramientas de campañas de Google Ads a cualquier agente de IA que se conecte a esta URL de webhook."
+    },
+    {
+      "id": "8ec237bc-6a57-42d9-942c-8c0b104e367c",
+      "name": "Obtener varias campañas",
+      "type": "n8n-nodes-base.googleAdsTool",
+      "position": [-800, 140],
+      "parameters": {
+        "campaigsNotice": "={{ $fromAI('Campaigs_Notice', ``, 'string') }}",
+        "requestOptions": {},
+        "clientCustomerId": "={{ $fromAI('Client_Customer_Id', ``, 'string') }}",
+        "additionalOptions": {},
+        "managerCustomerId": "={{ $fromAI('Manager_Customer_Id', ``, 'string') }}"
+      },
+      "credentials": {
+        "googleAdsOAuth2Api": {
+          "id": "PON_AQUI_TU_CREDENCIAL_ID",
+          "name": "Google Ads (configurar credencial propia)"
+        }
+      },
+      "typeVersion": 1,
+      "notes": "Herramienta MCP: lista todas las campañas de la cuenta indicada. El agente de IA rellena clientCustomerId, managerCustomerId, etc. automáticamente."
+    },
+    {
+      "id": "c082536b-9762-4ad7-86b9-28d8adcdde32",
+      "name": "Obtener una campaña",
+      "type": "n8n-nodes-base.googleAdsTool",
+      "position": [-580, 140],
+      "parameters": {
+        "operation": "get",
+        "campaignId": "={{ $fromAI('Campaign_Id', ``, 'string') }}",
+        "campaigsNotice": "={{ $fromAI('Campaigs_Notice', ``, 'string') }}",
+        "requestOptions": {},
+        "clientCustomerId": "={{ $fromAI('Client_Customer_Id', ``, 'string') }}",
+        "managerCustomerId": "={{ $fromAI('Manager_Customer_Id', ``, 'string') }}"
+      },
+      "credentials": {
+        "googleAdsOAuth2Api": {
+          "id": "PON_AQUI_TU_CREDENCIAL_ID",
+          "name": "Google Ads (configurar credencial propia)"
+        }
+      },
+      "typeVersion": 1,
+      "notes": "Herramienta MCP: obtiene el detalle de una campaña concreta a partir de su Campaign_Id."
+    }
+  ],
+  "active": false,
+  "pinData": {},
+  "settings": {
+    "timezone": "Europe/Madrid"
+  },
+  "meta": {
+    "instanceId": "TU_INSTANCE_ID"
+  },
+  "tags": [],
+  "connections": {
+    "Obtener varias campañas": {
+      "ai_tool": [[{ "node": "Servidor MCP de Google Ads", "type": "ai_tool", "index": 0 }]]
+    },
+    "Obtener una campaña": {
+      "ai_tool": [[{ "node": "Servidor MCP de Google Ads", "type": "ai_tool", "index": 0 }]]
+    }
+  }
+}
